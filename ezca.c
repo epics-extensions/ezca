@@ -12,7 +12,7 @@
 /* #include <malloc.h> */
 /* #include <memory.h>  for memcpy()  */
 
-#include <tsDefs.h> /* for TS_STAMP */
+/*#include <tsDefs.h>*/ /* for TS_STAMP */
 
 /* for channel access calls */
 #include <cadef.h>
