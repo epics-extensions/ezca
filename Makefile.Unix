@@ -3,7 +3,10 @@
 #
 #
 # $Log$
-# Revision 1.3  1995/01/06 21:45:28  jba
+# Revision 1.4  1995/02/28 22:59:48  jba
+# Changed TARGETS to PROD to make install work.
+#
+# Revision 1.3  1995/01/06  21:45:28  jba
 # added ca_pend_io to old ca_array_put
 # added ezcaEndGroupWithReport
 # changed ezcaFreeErrorString(char *) to ezcaFree(void *)
@@ -30,7 +33,8 @@ INC = ezca.h
 LIBOBJS = ezca.o
 
 LIBNAME = libezca.a 
-TARGETS = $(INSTALL_LIB)/libezca.so.1.0 
+
+PROD = $(INSTALL_LIB)/libezca.so.1.0 
 
 include $(EPICS)/config/RULES.Unix
 
