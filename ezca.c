@@ -55,7 +55,7 @@
 #define DEBUGOFF            13
 #define DEBUGON             14
 #define DELAY               15
-#define FREEERRORSTRING     16
+#define FREEMEM             16
 #define PVTOCHID            17
 #define SETTIMEOUT          18
 #define STARTGROUP          19
@@ -99,7 +99,7 @@
 #define DEBUGOFF_MSG            "ezcaDebugOff()"
 #define DEBUGON_MSG             "ezcaDebugOn()"
 #define DELAY_MSG               "ezcaDelay()"
-#define FREEERRORSTRING_MSG     "ezcaFreeErrorString()"
+#define FREEMEM_MSG             "ezcaFree()"
 #define PVTOCHID_MSG            "ezcaPvToChid()"
 #define SETTIMEOUT_MSG          "ezcaSetTimeout()"
 #define STARTGROUP_MSG          "ezcaStartGroup()"
@@ -421,10 +421,24 @@ static void print_workp();
 int ezcaEndGroup()
 {
 
+    return ezcaEndGroupWithReport((int **) NULL, (int *) NULL);
+
+} /* end ezcaEndGroup() */
+
+/****************************************************************
+*
+*
+****************************************************************/
+
+int ezcaEndGroupWithReport(int **rcs, int *nrcs)
+{
+
 struct work *wp;
 BOOL needs_work;
 int status;
 int attempts;
+unsigned int nelem;
+unsigned int i;
 BOOL all_reported, error, issued_a_search;
 unsigned char hi;
 int rc;
@@ -436,25 +450,28 @@ int rc;
 	/* in a group */
 
 	if (Trace || Debug)
-    printf("ezcaEndGroup() about to process work list\n");
+    printf("ezcaEndGroupWithReport() about to process work list\n");
 
 	/* searching for all the channels */
-	for (wp = Work_list.head, issued_a_search = FALSE; wp; wp = wp->next)
+	for (wp = Work_list.head, nelem = 0, issued_a_search = FALSE; 
+	    wp; wp = wp->next)
 	{
+	    nelem ++;
+
 	    if (wp->rc == EZCA_OK)
 	    {
 		/* all input args OK */
 		if (wp->cp = find_channel(wp->pvname))
 		{
 		    if (Trace || Debug)
-		    printf("ezcaEndGroup() was able to find_channel() >%s<\n", 
+	printf("ezcaEndGroupWithReport() was able to find_channel() >%s<\n", 
 			wp->pvname);
 		}
 		else
 		{
 		    /* not in Channels  must ca_search_and_connect() and add */
 		    if (Trace || Debug)
-printf("ezcaEndGroup() could not find_channel() >%s< must ca_search_and_connect() and add\n", wp->pvname);
+printf("ezcaEndGroupWithReport() could not find_channel() >%s< must ca_search_and_connect() and add\n", wp->pvname);
 		    if (wp->cp = pop_channel())
 		    {
 			if ((wp->cp)->pvname = strdup(wp->pvname))
@@ -506,7 +523,7 @@ printf("ezcaEndGroup() could not find_channel() >%s< must ca_search_and_connect(
 		!all_reported && attempts <= RetryCount; attempts ++)
 	    {
 		if (Trace || Debug)
-		    printf("ezcaEndGroup() search attempt %d of %d\n",
+		    printf("ezcaEndGroupWithReport() search attempt %d of %d\n",
 			attempts+1, RetryCount+1);
 
 		EzcaPendEvent((struct work *) NULL, TimeoutSeconds);
@@ -548,14 +565,14 @@ printf("ezcaEndGroup() could not find_channel() >%s< must ca_search_and_connect(
 			if (get_from_monitor(wp, wp->cp))
 			{
 			    if (Trace || Debug)
-    printf("ezcaEndGroup(): found an active monitor with a value for >%s<\n", 
+    printf("ezcaEndGroupWithReport(): found an active monitor with a value for >%s<\n", 
 		wp->pvname);
 			    wp->needs_work = FALSE;
 			}
 			else
 			{
 			    if (Trace || Debug)
-printf("ezcaEndGroup(): did not find an active monitor with a value for >%s<\n",
+printf("ezcaEndGroupWithReport(): did not find an active monitor with a value for >%s<\n",
 				wp->pvname);
 
 			    wp->needs_work = issue_get(wp, wp->cp);
@@ -576,14 +593,14 @@ printf("ezcaEndGroup(): did not find an active monitor with a value for >%s<\n",
 			if (get_from_monitor(wp, wp->cp))
 			{
 			    if (Trace || Debug)
-    printf("ezcaEndGroup(): found an active monitor with a value for >%s<\n", 
+    printf("ezcaEndGroupWithReport(): found an active monitor with a value for >%s<\n", 
 		wp->pvname);
 			    wp->needs_work = FALSE;
 			}
 			else
 			{
 			    if (Trace || Debug)
-printf("ezcaEndGroup(): did not find an active monitor with a value for >%s<\n",
+printf("ezcaEndGroupWithReport(): did not find an active monitor with a value for >%s<\n",
 				wp->pvname);
 
 			    wp->nelem = EzcaElementCount(wp->cp);
@@ -638,7 +655,7 @@ printf("ezcaEndGroup(): did not find an active monitor with a value for >%s<\n",
 			break;
 		    default:
 			fprintf(stderr,
-"EZCA FATAL ERROR: ezcaEndGroup() found invalid worktype %d in group list\n",
+"EZCA FATAL ERROR: ezcaEndGroupWithReport() found invalid worktype %d in group list\n",
 			    wp->worktype);
 			exit(1);
 			break;
@@ -654,14 +671,14 @@ printf("ezcaEndGroup(): did not find an active monitor with a value for >%s<\n",
 	if (needs_work)
 	{
 	    if (Trace || Debug)
-		printf("ezcaEndGroup() found work\n");
+		printf("ezcaEndGroupWithReport() found work\n");
 
 	    for (all_reported = FALSE, error = FALSE, attempts = 0;
 		!all_reported && !error && attempts <= RetryCount; 
 		    attempts ++)
 	    {
 		if (Trace || Debug)
-		    printf("ezcaEndGroup(): attempt %d of %d\n", 
+		    printf("ezcaEndGroupWithReport(): attempt %d of %d\n", 
 			attempts+1, RetryCount+1);
 
 		status = EzcaPendEvent((struct work *) NULL, TimeoutSeconds);
@@ -744,12 +761,25 @@ printf("ezcaEndGroup(): did not find an active monitor with a value for >%s<\n",
 	else
 	{
 	    if (Trace || Debug)
-		printf("ezcaEndGroup() found no work\n");
+		printf("ezcaEndGroupWithReport() found no work\n");
 	} /* endif */
 
-	/* clearing all the malloc'd memory in PUT works */
-	for (wp = Work_list.head; wp; wp = wp->next)
+	if (nrcs)
+	    *nrcs = nelem;
+
+	if (rcs)
+	    *rcs = (int *) malloc(nelem*sizeof(int));
+
+	for (i = 0, wp = Work_list.head, rc = EZCA_OK; wp; wp = wp->next, i ++)
 	{
+	    /* setting rc to first encoutered problem or EZCA_OK */
+	    if (rc == EZCA_OK && wp->rc != EZCA_OK)
+		rc = wp->rc;
+
+	    if (rcs && *rcs)
+		(*rcs)[i] = wp->rc;
+
+	    /* clearing all the malloc'd memory in PUT works */
 	    if (wp->worktype == PUT && wp->pval)
 	    {
 		free((char *) wp->pval);
@@ -757,15 +787,8 @@ printf("ezcaEndGroup(): did not find an active monitor with a value for >%s<\n",
 	    } /* endif */
 	} /* endfor */
 
-	/* setting rc to first encoutered problem or EZCA_OK */
-	for (rc = EZCA_OK, wp = Work_list.head; 
-	    rc == EZCA_OK && wp; 
-		wp = wp->next)
-	    if (wp->rc != EZCA_OK)
-		rc = wp->rc;
-
 	if (Trace || Debug)
-    printf("ezcaEndGroup() setting ErrorLocation LIST and clearing InGroup\n");
+    printf("ezcaEndGroupWithReport() setting ErrorLocation LIST and clearing InGroup\n");
 
 	ErrorLocation = LISTWORK;
 	ListPrint = WHOLELIST;
@@ -776,13 +799,19 @@ printf("ezcaEndGroup(): did not find an active monitor with a value for >%s<\n",
 	/* not in a group */
 	rc = EZCA_NOTINGROUP;
 
+	if (nrcs)
+	    *nrcs = -1;
+
+	if (rcs)
+	    *rcs = (int *) NULL;
+
 	if (AutoErrorMessage)
 	    printf("%s\n", NOTINGROUP_MSG);
     } /* endif */
 
     return rc;
 
-} /* end ezcaEndGroup() */
+} /* end endgroup() */
 
 /****************************************************************
 *
@@ -839,7 +868,7 @@ int rc;
 		    case DEBUGOFF:         wtm = DEBUGOFF_MSG;         break;
 		    case DEBUGON:          wtm = DEBUGON_MSG;          break;
 		    case DELAY:            wtm = DELAY_MSG;            break;
-		    case FREEERRORSTRING:  wtm = FREEERRORSTRING_MSG;  break;
+		    case FREEMEM:          wtm = FREEMEM_MSG;  break;
 		    case PVTOCHID:         wtm = PVTOCHID_MSG;         break;
 		    case SETTIMEOUT:       wtm = SETTIMEOUT_MSG;       break;
 		    case STARTGROUP:       wtm = STARTGROUP_MSG;       break;
@@ -900,7 +929,7 @@ int rc;
 		    case DEBUGOFF:         wtm = DEBUGOFF_MSG;         break;
 		    case DEBUGON:          wtm = DEBUGON_MSG;          break;
 		    case DELAY:            wtm = DELAY_MSG;            break;
-		    case FREEERRORSTRING:  wtm = FREEERRORSTRING_MSG;  break;
+		    case FREEMEM:          wtm = FREEMEM_MSG;  break;
 		    case PVTOCHID:         wtm = PVTOCHID_MSG;         break;
 		    case SETTIMEOUT:       wtm = SETTIMEOUT_MSG;       break;
 		    case STARTGROUP:       wtm = STARTGROUP_MSG;       break;
@@ -985,8 +1014,8 @@ int rc;
 				wtm = DEBUGON_MSG;             break;
 			    case DELAY:            
 				wtm = DELAY_MSG;               break;
-			    case FREEERRORSTRING:  
-				wtm = FREEERRORSTRING_MSG;     break;
+			    case FREEMEM:  
+				wtm = FREEMEM_MSG;             break;
 			    case PVTOCHID:         
 				wtm = PVTOCHID_MSG;            break;
 			    case SETTIMEOUT:       
@@ -1097,8 +1126,8 @@ int rc;
 				wtm = DEBUGON_MSG;             break;
 			    case DELAY:               
 				wtm = DELAY_MSG;               break;
-			    case FREEERRORSTRING:  
-				wtm = FREEERRORSTRING_MSG;     break;
+			    case FREEMEM:  
+				wtm = FREEMEM_MSG;             break;
 			    case PVTOCHID:         
 				wtm = PVTOCHID_MSG;            break;
 			    case SETTIMEOUT:       
@@ -1337,7 +1366,7 @@ char *wtm;
 		case DEBUGOFF:         wtm = DEBUGOFF_MSG;         break;
 		case DEBUGON:          wtm = DEBUGON_MSG;          break;
 		case DELAY:            wtm = DELAY_MSG;            break;
-		case FREEERRORSTRING:  wtm = FREEERRORSTRING_MSG;  break;
+		case FREEMEM:          wtm = FREEMEM_MSG;          break;
 		case PVTOCHID:         wtm = PVTOCHID_MSG;         break;
 		case SETTIMEOUT:       wtm = SETTIMEOUT_MSG;       break;
 		case STARTGROUP:       wtm = STARTGROUP_MSG;       break;
@@ -1386,7 +1415,7 @@ char *wtm;
 		case DEBUGOFF:         wtm = DEBUGOFF_MSG;         break;
 		case DEBUGON:          wtm = DEBUGON_MSG;          break;
 		case DELAY:            wtm = DELAY_MSG;            break;
-		case FREEERRORSTRING:  wtm = FREEERRORSTRING_MSG;  break;
+		case FREEMEM:          wtm = FREEMEM_MSG;          break;
 		case PVTOCHID:         wtm = PVTOCHID_MSG;         break;
 		case SETTIMEOUT:       wtm = SETTIMEOUT_MSG;       break;
 		case STARTGROUP:       wtm = STARTGROUP_MSG;       break;
@@ -1759,7 +1788,7 @@ int rc;
 *
 ****************************************************************/
 
-void ezcaFreeErrorString(char *buff)
+void ezcaFree(void *buff)
 {
 
 struct work *wp;
@@ -1771,14 +1800,14 @@ struct work *wp;
 	ErrorLocation = SINGLEWORK;
 
 	/* filling work */
-	wp->worktype = FREEERRORSTRING;
+	wp->worktype = FREEMEM;
 	wp->rc = EZCA_OK;
 
 	if (buff)
 	    free(buff);
 
 	if (Debug)
-	    printf("ezcaFreeErrorString() just freed starting %x\n", buff);
+	    printf("ezcaFree() just freed starting %x\n", buff);
     }
     else
     {
@@ -1786,7 +1815,7 @@ struct work *wp;
 	    printf("%s\n", FAILED_MALLOC_MSG);
     } /* endif */
 
-} /* end ezcaFreeErrorString() */
+} /* end ezcaFree() */
 
 /****************************************************************
 *
@@ -3821,7 +3850,10 @@ int rc;
 		    /* channel is currently connected */
 
 		    if (wp->nelem <= EzcaElementCount(cp))
-			EzcaArrayPut(wp, cp);
+		    {
+			if (EzcaArrayPut(wp, cp) == ECA_NORMAL)
+			    EzcaPendIO(wp, SHORT_TIME);
+		    }
 		    else
 		    {
 			/* too many elements requested */

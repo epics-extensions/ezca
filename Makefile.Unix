@@ -3,7 +3,13 @@
 #
 #
 # $Log$
-# Revision 1.2  1994/12/15 20:27:13  jba
+# Revision 1.3  1995/01/06 21:45:28  jba
+# added ca_pend_io to old ca_array_put
+# added ezcaEndGroupWithReport
+# changed ezcaFreeErrorString(char *) to ezcaFree(void *)
+# changed makefile to make library dynamically bindable
+#
+# Revision 1.2  1994/12/15  20:27:13  jba
 # Added INC  definition so ezca.h gets installed
 #
 # Revision 1.1  1994/10/31  15:27:15  jba
@@ -15,13 +21,27 @@ EPICS = ../../../..
 include Target.include
 include $(EPICS)/config/CONFIG_EXTENSIONS
 
-SRCS.c = ../ezca.c 
+USR_CFLAGS = -pic
 
-LIBOBJS = ezca.o
+SRCS.c = ../ezca.c 
 
 INC = ezca.h
 
-LIBNAME = libezca.a
+LIBOBJS = ezca.o
+
+LIBNAME = libezca.a 
+TARGETS = $(INSTALL_LIB)/libezca.so.1.0 
 
 include $(EPICS)/config/RULES.Unix
 
+libezca.so.1.0:
+	ld -o libezca.so.1.0 -assert pure-text ezca.o
+
+$(INSTALL_LIB)/libezca.so.1.0: libezca.so.1.0
+	@echo "Installing library $@"
+	@test -d $(INSTALL_LOCATION_LIB) || mkdir $(INSTALL_LOCATION_LIB)
+	@test -d $(INSTALL_LIB) || mkdir $(INSTALL_LIB)
+	@$(INSTALL) -m 644 $< $(INSTALL_LIB)
+
+clean::
+	$(RM) lib*

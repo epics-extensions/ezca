@@ -23,6 +23,7 @@
 /* Immediate Functions ... do not affect error message */
 
 int ezcaEndGroup();
+int ezcaEndGroupWithReport(int **rcs, int *nrcs);
 int ezcaGetErrorString(char *prefix, char **buff);
 int ezcaNewMonitorValue(char *pvname, char ezcatype); /* returns TRUE/FALSE */
 void ezcaPerror(char *prefix);
@@ -35,7 +36,7 @@ int ezcaClearMonitor(char *pvname, char ezcatype);
 void ezcaDebugOff();
 void ezcaDebugOn();
 int ezcaDelay(float sec);
-void ezcaFreeErrorString(char *buff);
+void ezcaFree(void *buff);
 int ezcaGetRetryCount();
 float ezcaGetTimeout();
 int ezcaPvToChid(char *pvname, chid **cid);
