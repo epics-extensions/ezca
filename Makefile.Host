@@ -32,9 +32,9 @@ LIBRARY := ezca
 
 # need additional libs
 PROD_LIBS := ca Com
-ifdef BASE_3_14
-SYS_DLL_LIBS_solaris += Cstd
-endif
+#ifdef BASE_3_14
+#SYS_DLL_LIBS_solaris += Cstd
+#endif
 
 ca_DIR = $(EPICS_BASE_LIB)
 Com_DIR = $(EPICS_BASE_LIB)
