@@ -1,8 +1,9 @@
 #include <stdio.h>
 #include <string.h> /* for strdup(), strcpy() and strncpy() */
-#include <strings.h> /* index() */
-#include <malloc.h>
-#include <memory.h> /* for memcpy() */
+#include <stdlib.h>
+/* #include <strings.h>  index()  */
+/* #include <malloc.h> */
+/* #include <memory.h>  for memcpy()  */
 
 #include <tsDefs.h> /* for TS_STAMP */
 
@@ -6921,6 +6922,7 @@ int i;
             {
                 rc->next = rc + 1;
 		rc->pvname = (char *) NULL;
+		rc->aux_error_msg = (char *) NULL;
 
 		if (Debug)
 		    printf("i = %d rc %x rc->next %x\n", i, rc, rc->next);
@@ -6929,6 +6931,7 @@ int i;
             } /* endfor */
             rc->next = (struct work *) NULL;
 	    rc->pvname = (char *) NULL;
+	    rc->aux_error_msg = (char *) NULL;
 
 	    if (Debug)
 		printf("i = %d rc %x rc->next %x\n", i, rc, rc->next);
