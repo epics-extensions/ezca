@@ -1,6 +1,13 @@
 #include <stdio.h>
+#if (__BORLANDC__)
+#undef __STDC__
 #include <string.h> /* for strdup(), strcpy() and strncpy() */
+#define __STDC__ 0
+#else
+#include <string.h> /* for strdup(), strcpy() and strncpy() */
+#endif
 #include <stdlib.h>
+#include <string.h>
 /* #include <strings.h>  index()  */
 /* #include <malloc.h> */
 /* #include <memory.h>  for memcpy()  */
@@ -332,8 +339,6 @@ static unsigned char RandomNumbers[256] =
     134, 68, 93,183,241, 81,196, 49,192, 65,212, 94,203, 10,200, 47 
 };
 
-/* Unix */
-void exit(int);
 
 /*******************/
 /*                 */
@@ -345,18 +350,18 @@ void exit(int);
 static void append_to_work_list(struct work *);
 static void copy_time_stamp(TS_STAMP *, TS_STAMP *); /* really should be */
 						     /* in tsDefs.h      */
-static void empty_work_list();
+static void empty_work_list(void);
 static struct channel *find_channel(char *);
 static void get_channel(struct work *, struct channel **);
 static BOOL get_from_monitor(struct work *, struct channel *);
-static struct work *get_work();
-static struct work *get_work_single();
+static struct work *get_work(void);
+static struct work *get_work_single(void);
 static unsigned char hash(char *);
-static void init();
+static void init(void);
 static BOOL issue_get(struct work *, struct channel *);
 static void issue_wait(struct work *);
 static void print_error(struct work *);
-static void prologue();
+static void prologue(void);
 
 /* Channel Access Interface Functions */
 static int EzcaAddArrayEvent(struct work *, struct monitor *);
@@ -367,7 +372,7 @@ static int EzcaArrayGetCallback(struct work *, struct channel *);
 static int EzcaArrayPutCallback(struct work *, struct channel *);
 static int EzcaArrayPut(struct work *, struct channel *);
 static unsigned EzcaElementCount(struct channel *);
-static void EzcaInitializeChannelAccess();
+static void EzcaInitializeChannelAccess(void);
 static int EzcaNativeType(struct channel *);
 static int EzcaPendEvent(struct work *, float);
 static int EzcaPendIO(struct work *, float);
@@ -382,26 +387,26 @@ static void my_put_callback(struct event_handler_args);
 /* Memory Management */
 static void clean_and_push_channel(struct channel *);
 static void clean_and_push_monitor(struct monitor *);
-static struct channel *pop_channel();
-static struct monitor *pop_monitor();
-static struct work *pop_work();
+static struct channel *pop_channel(void);
+static struct monitor *pop_monitor(void);
+static struct work *pop_work(void);
 static void init_work(struct work *);
 static void push_channel(struct channel *);
 static void push_monitor(struct monitor *);
 static void push_work(struct work *);
 
 /* Debugging */
-static void print_avails();
-static void print_channel_avail();
-static void print_channels();
-static void print_discarded_channels();
-static void print_discarded_monitors();
-static void print_discarded_work();
-static void print_monitor_avail();
-static void print_state();
-static void print_work_avail();
-static void print_work_list();
-static void print_workp();
+static void print_avails(void);
+static void print_channel_avail(void);
+static void print_channels(void);
+static void print_discarded_channels(void);
+static void print_discarded_monitors(void);
+static void print_discarded_work(void);
+static void print_monitor_avail(void);
+static void print_state(void);
+static void print_work_avail(void);
+static void print_work_list(void);
+static void print_workp(void);
 
 /********************************/
 /*                              */
