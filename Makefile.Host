@@ -25,10 +25,16 @@ LIBRARY := ezca
 # need additional libs
 PROD_LIBS := ca Com
 
-ifeq ($(HOST_ARCH),solaris)
+ca_DIR = $(EPICS_BASE_LIB)
+Com_DIR = $(EPICS_BASE_LIB)
+
+ifndef BASE_3_14
+ifeq ($(OS_CLASS),solaris)
 ACC_DEP_CFLAGS = -KPIC -v
 CCC_DEP_CFLAGS = -KPIC -v
 endif
+endif
+
 include $(TOP)/config/RULES.Host
 
 #	EOF Makefile.Host
