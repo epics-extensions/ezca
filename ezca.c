@@ -18,6 +18,8 @@
 #include <shareLib.h>
 
 #include <ezca.h> /* what all users of EZCA include */
+extern char *strdup(const char *s1);
+
 
 #define BOOL  char
 #define FALSE 0
