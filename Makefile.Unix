@@ -1,0 +1,22 @@
+#
+# $Id$
+#
+#
+# $Log$
+# Revision 1.1  1994/10/31 15:27:15  jba
+# Initial version
+#
+#
+
+EPICS = ../../../..
+include Target.include
+include $(EPICS)/config/CONFIG_EXTENSIONS
+
+SRCS.c = ../ezca.c 
+
+LIBOBJS = ezca.o
+
+LIBNAME = libezca.a
+
+include $(EPICS)/config/RULES.Unix
+
