@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include <string.h> /* for strcpy() and strncpy() */
+#include <string.h> /* for strdup(), strcpy() and strncpy() */
 #include <strings.h> /* index() */
 #include <malloc.h>
 #include <memory.h> /* for memcpy() */
@@ -64,6 +64,7 @@
 #define SETRETRYCOUNT       22
 #define GETRETRYCOUNT       23
 #define GETTIMEOUT          24
+#define PUTOLDCA            25
 
 /********************************/
 /*                              */
@@ -83,6 +84,7 @@
 
 #define GET_MSG                 "ezcaGet()"
 #define PUT_MSG                 "ezcaPut()"
+#define PUTOLDCA_MSG            "ezcaPutOldCa()"
 #define GETUNITS_MSG            "ezcaGetUnits()"
 #define GETNELEM_MSG            "ezcaGetNelem()"
 #define GETPRECISION_MSG        "ezcaGetPrecision()"
@@ -116,30 +118,88 @@
 #define INVALID_ARG_MSG     "invalid argument received by this function"
 #define NOT_CONNECTED_MSG   "channel not currently connected"
 #define NO_RESPONSE_IN_TIME_MSG "no response in time"
-#define ECA_NOSUPPORT_MSG   "no CA support available for this call (probably outdated version of EPICS on IOC)"
 #define UDFREQ_MSG          "item(s) requested undefined for its native data type"
 #define INGROUP_MSG         "currently in a group"
 #define NOTINGROUP_MSG      "not currently in a group"
 #define NO_PVAR_FOUND_MSG   "could not find process variable"
+#define ECA_BADCHID_MSG     "corrupted/disconnected chid"
 /* CA detected Error Messages */
 #define PROLOGUE_MSG           "prologue()"
 #define CAADDARRAYEVENT_MSG    "ca_add_array_event()"
 #define CAARRAYGETCALL_MSG     "ca_array_get_callback()"
 #define CAARRAYPUTCALL_MSG     "ca_array_put_callback()"
+#define CAARRAYPUT_MSG         "ca_array_put()"
 #define CASEARCHANDCONNECT_MSG "ca_search_and_connect()"
 #define CAPENDIO_MSG           "ca_pend_io()"
 #define CAPENDEVENT_MSG        "ca_pend_event()"
-/* from CA guide */
-#define ECA_BADTYPE_MSG    "unknown get type"
-#define ECA_STRTOBIG_MSG   "unusually large string supplied"
-#define ECA_ALLOCMEM_MSG   "unable to allocate memory"
-#define ECA_GETFAIL_MSG    "a local database get failed"
-#define ECA_EVDISALLOW_MSG "function inappropriate for use within an event handler"
-#define ECA_TIMEOUT_MSG    "the operation timed out"
-#define UNKNOWN_RC_MSG     "unrecognizable return status"
-#define ECA_BADCHID_MSG    "corrupted chid"
-#define ECA_BADCOUNT_MSG   "requested count larger than native element count"
-#define ECA_NORMAL_MSG     "received unexepected ECA_NORMAL"
+#define CAARRAYPUTCALLBACK_MSG "put_callback()"
+#define CAARRAYGETCALLBACK_MSG "get_callback()"
+
+/************************/
+/*                      */
+/* Start Error Messages */
+/*                      */
+/************************/
+
+static char *ErrorMsgs[] =
+{
+    INVALID_PVNAME_MSG,
+    INVALID_TYPE_MSG,
+    FAILED_MALLOC_MSG,
+    INVALID_NELEM_MSG,
+    TOO_MANY_NELEM_MSG,
+    INVALID_PBUFF_MSG,
+    INVALID_ARG_MSG,
+    NOT_CONNECTED_MSG,
+    NO_RESPONSE_IN_TIME_MSG,
+    UDFREQ_MSG,
+    INGROUP_MSG,
+    NOTINGROUP_MSG,
+    NO_PVAR_FOUND_MSG,
+    ECA_BADCHID_MSG,
+
+    CAPENDEVENT_MSG,
+    CAADDARRAYEVENT_MSG,
+    CAARRAYGETCALL_MSG,
+    CAARRAYPUTCALL_MSG,
+    CAPENDIO_MSG,
+    CAARRAYPUT_MSG,
+    CASEARCHANDCONNECT_MSG,
+    CAARRAYPUTCALLBACK_MSG,
+    CAARRAYGETCALLBACK_MSG 
+};
+
+/* These MUST match the above table */
+
+#define INVALID_PVNAME_MSG_IDX      0
+#define INVALID_TYPE_MSG_IDX        1
+#define FAILED_MALLOC_MSG_IDX       2
+#define INVALID_NELEM_MSG_IDX       3
+#define TOO_MANY_NELEM_MSG_IDX      4
+#define INVALID_PBUFF_MSG_IDX       5
+#define INVALID_ARG_MSG_IDX         6
+#define NOT_CONNECTED_MSG_IDX       7
+#define NO_RESPONSE_IN_TIME_MSG_IDX 8
+#define UDFREQ_MSG_IDX              9
+#define INGROUP_MSG_IDX            10
+#define NOTINGROUP_MSG_IDX         11
+#define NO_PVAR_FOUND_MSG_IDX      12
+#define ECA_BADCHID_MSG_IDX        13
+#define CAPENDEVENT_MSG_IDX        14
+#define CAADDARRAYEVENT_MSG_IDX    15
+#define CAARRAYGETCALL_MSG_IDX     16
+#define CAARRAYPUTCALL_MSG_IDX     17
+#define CAPENDIO_MSG_IDX           18
+#define CAARRAYPUT_MSG_IDX         19
+#define CASEARCHANDCONNECT_MSG_IDX 20
+#define CAARRAYPUTCALLBACK_MSG_IDX 21
+#define CAARRAYGETCALLBACK_MSG_IDX 22
+
+/**********************/
+/*                    */
+/* End Error Messages */
+/*                    */
+/**********************/
 
 /*******************/
 /*                 */
@@ -168,9 +228,10 @@ struct monitor
 struct channel
 {
     struct channel *next;
-    char pvname[MAXPVARNAMELENGTH];
+    char *pvname;
     chid cid;
     struct monitor *monitor_list;
+    BOOL ever_successfully_searched;
 }; /* end struct channel */
 
 struct work
@@ -178,13 +239,14 @@ struct work
     struct work *next;
     struct channel *cp;
     int rc;
-    char error_msg[1000];
+    char *error_msg;
+    char *aux_error_msg;
     BOOL trashme;
     BOOL needs_work;
     /* the rest filled in based on type of work */
     char dbr_type;
     BOOL reported;
-    char pvname[MAXPVARNAMELENGTH];
+    char *pvname;
     char worktype;
     void *pval;
     int nelem;
@@ -285,8 +347,8 @@ static unsigned char hash(char *);
 static void init();
 static BOOL issue_get(struct work *, struct channel *);
 static void issue_wait(struct work *);
+static void print_error(struct work *);
 static void prologue();
-static BOOL valid_pvname(char *);
 
 /* Channel Access Interface Functions */
 static int EzcaAddArrayEvent(struct work *, struct monitor *);
@@ -294,6 +356,8 @@ static void EzcaClearChannel(struct channel *);
 static void EzcaClearEvent(struct monitor *);
 static BOOL EzcaConnected(struct channel *);
 static int EzcaArrayGetCallback(struct work *, struct channel *);
+static int EzcaArrayPutCallback(struct work *, struct channel *);
+static int EzcaArrayPut(struct work *, struct channel *);
 static unsigned EzcaElementCount(struct channel *);
 static void EzcaInitializeChannelAccess();
 static int EzcaNativeType(struct channel *);
@@ -361,7 +425,8 @@ struct work *wp;
 BOOL needs_work;
 int status;
 int attempts;
-BOOL all_reported, error;
+BOOL all_reported, error, issued_a_search;
+unsigned char hi;
 int rc;
 
     prologue();
@@ -372,6 +437,214 @@ int rc;
 
 	if (Trace || Debug)
     printf("ezcaEndGroup() about to process work list\n");
+
+	/* searching for all the channels */
+	for (wp = Work_list.head, issued_a_search = FALSE; wp; wp = wp->next)
+	{
+	    if (wp->rc == EZCA_OK)
+	    {
+		/* all input args OK */
+		if (wp->cp = find_channel(wp->pvname))
+		{
+		    if (Trace || Debug)
+		    printf("ezcaEndGroup() was able to find_channel() >%s<\n", 
+			wp->pvname);
+		}
+		else
+		{
+		    /* not in Channels  must ca_search_and_connect() and add */
+		    if (Trace || Debug)
+printf("ezcaEndGroup() could not find_channel() >%s< must ca_search_and_connect() and add\n", wp->pvname);
+		    if (wp->cp = pop_channel())
+		    {
+			if ((wp->cp)->pvname = strdup(wp->pvname))
+			{
+			    if (EzcaQueueSearchAndConnect(wp, wp->cp) 
+				    == ECA_NORMAL)
+			    {
+				issued_a_search = TRUE;
+
+				/* adding to Channels */
+				hi = hash((wp->cp)->pvname);
+				(wp->cp)->next = Channels[hi];
+				Channels[hi] = wp->cp;
+			    }
+			    else
+			    {
+				/* something went wrong ... rc and */
+				/* error msg have already been set */
+
+				clean_and_push_channel(wp->cp);
+				wp->cp= (struct channel *) NULL;
+			    } /* endif */
+			}
+			else
+			{
+			    wp->rc = EZCA_FAILEDMALLOC;
+			    wp->error_msg = ErrorMsgs[FAILED_MALLOC_MSG_IDX];
+
+			    if (AutoErrorMessage)
+				print_error(wp);
+			} /* endif */
+		    }
+		    else
+		    {
+			wp->rc = EZCA_FAILEDMALLOC;
+			wp->error_msg = ErrorMsgs[FAILED_MALLOC_MSG_IDX];
+
+			if (AutoErrorMessage)
+			    print_error(wp);
+		    } /* endif */
+		} /* endif */
+	    } /* endif */
+	} /* endfor */
+
+	/* waiting for all searches to connect */
+	if (issued_a_search)
+	{
+	    for (all_reported = FALSE, attempts = 0; 
+		!all_reported && attempts <= RetryCount; attempts ++)
+	    {
+		if (Trace || Debug)
+		    printf("ezcaEndGroup() search attempt %d of %d\n",
+			attempts+1, RetryCount+1);
+
+		EzcaPendEvent((struct work *) NULL, TimeoutSeconds);
+
+		for (all_reported = TRUE, wp = Work_list.head; 
+		    all_reported && wp; 
+			wp = wp->next)
+		    /* (wp->rc = OK) ==> (wp->cp is connected) */
+		    all_reported = (wp->rc != EZCA_OK 
+			|| (wp->cp ? EzcaConnected(wp->cp) : FALSE));
+	    } /* endfor */
+	} /* endif */
+
+	/* identifying those that were not able to connect */
+	for (wp = Work_list.head; wp; wp = wp->next)
+	{
+	    if (wp->rc == EZCA_OK && wp->cp && !EzcaConnected(wp->cp))
+	    {
+		/* do not want to remove here ... may come up later */
+
+		wp->rc = EZCA_NOTIMELYRESPONSE;
+		wp->error_msg = ErrorMsgs[NO_PVAR_FOUND_MSG_IDX];
+		wp->aux_error_msg = strdup(wp->pvname);
+
+		if (AutoErrorMessage)
+		    print_error(wp);
+	    } /* endif */
+	} /* endfor */
+
+	/* issuing the work for those that are still EZCA_OK */
+	for (wp = Work_list.head; wp; wp = wp->next)
+	{
+	    if (wp->rc == EZCA_OK)
+	    {
+		switch (wp->worktype)
+		{
+		    case GET:
+		    case GETWITHSTATUS:
+			if (get_from_monitor(wp, wp->cp))
+			{
+			    if (Trace || Debug)
+    printf("ezcaEndGroup(): found an active monitor with a value for >%s<\n", 
+		wp->pvname);
+			    wp->needs_work = FALSE;
+			}
+			else
+			{
+			    if (Trace || Debug)
+printf("ezcaEndGroup(): did not find an active monitor with a value for >%s<\n",
+				wp->pvname);
+
+			    wp->needs_work = issue_get(wp, wp->cp);
+			} /* endif */
+			break;
+		    case GETCONTROLLIMITS:
+		    case GETGRAPHICLIMITS:
+		    case GETPRECISION:
+		    case GETUNITS:
+			wp->nelem = EzcaElementCount(wp->cp);
+			wp->needs_work = issue_get(wp, wp->cp);
+			break;
+		    case GETNELEM:
+			wp->nelem = EzcaElementCount(wp->cp);
+			wp->needs_work = FALSE;
+			break;
+		    case GETSTATUS:
+			if (get_from_monitor(wp, wp->cp))
+			{
+			    if (Trace || Debug)
+    printf("ezcaEndGroup(): found an active monitor with a value for >%s<\n", 
+		wp->pvname);
+			    wp->needs_work = FALSE;
+			}
+			else
+			{
+			    if (Trace || Debug)
+printf("ezcaEndGroup(): did not find an active monitor with a value for >%s<\n",
+				wp->pvname);
+
+			    wp->nelem = EzcaElementCount(wp->cp);
+			    wp->needs_work = issue_get(wp, wp->cp);
+			} /* endif */
+			break;
+		    case PUT:
+			if (wp->nelem <= EzcaElementCount(wp->cp))
+			{
+			    wp->reported = FALSE;
+			    if (EzcaArrayPutCallback(wp, wp->cp) == ECA_NORMAL)
+				wp->needs_work = TRUE;
+			    else
+			    {
+				/* something went wrong ... rc and */
+				/* error msg have already been set */
+
+				/* need to trash this wp so it's */
+				/* never used again in case the  */
+				/* callback fires off later      */
+
+				wp->needs_work = FALSE;
+				wp->trashme = TRUE;
+				if (Debug)
+				    printf("trashing wp %x\n", wp);
+
+			    } /* endif */
+			}
+			else
+			{
+			    /* too many elements requested */
+			    wp->rc = EZCA_INVALIDARG;
+			    wp->error_msg = ErrorMsgs[TOO_MANY_NELEM_MSG_IDX];
+
+			    if (AutoErrorMessage)
+				print_error(wp);
+			} /* endif */
+			break;
+		    case PUTOLDCA:
+			wp->needs_work = FALSE;
+			if (wp->nelem <= EzcaElementCount(wp->cp))
+			    EzcaArrayPut(wp, wp->cp);
+			else
+			{
+			    /* too many elements requested */
+			    wp->rc = EZCA_INVALIDARG;
+			    wp->error_msg = ErrorMsgs[TOO_MANY_NELEM_MSG_IDX];
+
+			    if (AutoErrorMessage)
+				print_error(wp);
+			} /* endif */
+			break;
+		    default:
+			fprintf(stderr,
+"EZCA FATAL ERROR: ezcaEndGroup() found invalid worktype %d in group list\n",
+			    wp->worktype);
+			exit(1);
+			break;
+		} /* end switch() */
+	    } /* endif */
+	} /* endor */
 
 	/* looking for work that is still EZCA_OK and needs_work */
 	for (wp = Work_list.head, needs_work = FALSE; 
@@ -404,7 +677,7 @@ int rc;
 			    wp = wp->next)
 			/* (EZCA_OK && needs_work) ===> reported */
 			all_reported = 
-		    !(wp->rc == EZCA_OK && wp->needs_work) || wp->reported;
+		    (!(wp->rc == EZCA_OK && wp->needs_work) || wp->reported);
 		}
 		else
 		    error = TRUE;
@@ -425,33 +698,12 @@ int rc;
 			if (Debug)
 			    printf("trashing wp %x\n", wp);
 
-			switch (status)
-			{
-			    case ECA_NORMAL:
-				wp->rc = EZCA_CAFAILURE;
-				sprintf(wp->error_msg, "%s: %s",
-				    CAPENDEVENT_MSG, ECA_NORMAL_MSG);
+			wp->rc = EZCA_CAFAILURE;
+			wp->error_msg = ErrorMsgs[CAPENDEVENT_MSG_IDX];
+			wp->aux_error_msg = strdup(ca_message(status));
 
-				if (AutoErrorMessage)
-				    printf("%s\n", wp->error_msg);
-				break;
-			    case ECA_EVDISALLOW:
-				wp->rc = EZCA_CAFAILURE;
-				sprintf(wp->error_msg, "%s: %s",
-				    CAPENDEVENT_MSG, ECA_EVDISALLOW_MSG);
-
-				if (AutoErrorMessage)
-				    printf("%s\n", wp->error_msg);
-				break;
-			    default:
-				wp->rc = EZCA_CAFAILURE;
-				sprintf(wp->error_msg, "%s: %s %d",
-				    CAPENDEVENT_MSG, UNKNOWN_RC_MSG, status);
-
-				if (AutoErrorMessage)
-				    printf("%s\n", wp->error_msg);
-				break;
-			} /* end switch() */
+			if (AutoErrorMessage)
+			    print_error(wp);
 		    } /* endif */
 		} /* endfor */
 	    }
@@ -474,10 +726,11 @@ int rc;
 			    /* callback fires off later      */
 
 			    wp->rc = EZCA_NOTIMELYRESPONSE;
-			    strcpy(wp->error_msg, NO_RESPONSE_IN_TIME_MSG);
+			    wp->error_msg = 
+				ErrorMsgs[NO_RESPONSE_IN_TIME_MSG_IDX];
 
 			    if (AutoErrorMessage)
-				printf("%s\n", wp->error_msg);
+				print_error(wp);
 
 			    wp->trashme = TRUE;
 
@@ -569,6 +822,7 @@ int rc;
 		{
 		    case GET:              wtm = GET_MSG;              break;
 		    case PUT:              wtm = PUT_MSG;              break;
+		    case PUTOLDCA:         wtm = PUTOLDCA_MSG;         break;
 		    case GETUNITS:         wtm = GETUNITS_MSG;         break;
 		    case GETNELEM:         wtm = GETNELEM_MSG;         break;
 		    case GETPRECISION:     wtm = GETPRECISION_MSG;     break;
@@ -607,7 +861,10 @@ int rc;
 			    + strlen(wtm) + 2
 			    + (wp->rc == EZCA_OK 
 				? strlen(OKMSG) 
-				: strlen(wp->error_msg))
+				: (strlen(wp->error_msg) 
+				    + (wp->aux_error_msg 
+					? strlen(wp->aux_error_msg)+3 
+					: 0)))
 			    + 1; /* for <CR> or NULL character */
 
 	    } /* endif */
@@ -626,6 +883,7 @@ int rc;
 		{
 		    case GET:              wtm = GET_MSG;              break;
 		    case PUT:              wtm = PUT_MSG;              break;
+		    case PUTOLDCA:         wtm = PUTOLDCA_MSG;         break;
 		    case GETUNITS:         wtm = GETUNITS_MSG;         break;
 		    case GETNELEM:         wtm = GETNELEM_MSG;         break;
 		    case GETPRECISION:     wtm = GETPRECISION_MSG;     break;
@@ -664,7 +922,10 @@ int rc;
 			    + strlen(wtm) + 2
 			    + (wp->rc == EZCA_OK 
 				? strlen(OKMSG) 
-				: strlen(wp->error_msg))
+				: (strlen(wp->error_msg)
+				    + (wp->aux_error_msg 
+					? strlen(wp->aux_error_msg)+3 
+					: 0)))
 			    + 1; /* for <CR> or NULL character */
 
 	    } /* endfor */
@@ -694,6 +955,8 @@ int rc;
 				wtm = GET_MSG;                 break;
 			    case PUT:              
 				wtm = PUT_MSG;                 break;
+			    case PUTOLDCA:         
+				wtm = PUTOLDCA_MSG;            break;
 			    case GETUNITS:         
 				wtm = GETUNITS_MSG;            break;
 			    case GETNELEM:         
@@ -772,6 +1035,14 @@ int rc;
 			{
 			    strcat(cp, wp->error_msg);
 			    cp += strlen(wp->error_msg);
+			    if (wp->aux_error_msg)
+			    {
+				strcat(cp, " : ");
+				cp += 3;
+
+				strcat(cp, wp->aux_error_msg);
+				cp += strlen(wp->aux_error_msg);
+			    } /* endif */
 			} /* endif */
 
 			*cp = '\0';
@@ -796,6 +1067,8 @@ int rc;
 				wtm = GET_MSG;                 break;
 			    case PUT:              
 				wtm = PUT_MSG;                 break;
+			    case PUTOLDCA:         
+				wtm = PUTOLDCA_MSG;            break;
 			    case GETUNITS:         
 				wtm = GETUNITS_MSG;            break;
 			    case GETNELEM:         
@@ -874,6 +1147,16 @@ int rc;
 			{
 			    strcat(cp, wp->error_msg);
 			    cp += strlen(wp->error_msg);
+
+			    if (wp->aux_error_msg)
+			    {
+				strcat(cp, " : ");
+				cp += 3;
+
+				strcat(cp, wp->aux_error_msg);
+				cp += strlen(wp->aux_error_msg);
+
+			    } /* endif */
 			} /* endif */
 
 			if (wp->next)
@@ -953,7 +1236,7 @@ int rc;
 
     prologue();
 
-    if (valid_pvname(pvname))
+    if (pvname)
     {
 	if (VALID_EZCA_DATA_TYPE(type))
 	{
@@ -1037,6 +1320,7 @@ char *wtm;
 	    {
 		case GET:              wtm = GET_MSG;              break;
 		case PUT:              wtm = PUT_MSG;              break;
+		case PUTOLDCA:         wtm = PUTOLDCA_MSG;         break;
 		case GETUNITS:         wtm = GETUNITS_MSG;         break;
 		case GETNELEM:         wtm = GETNELEM_MSG;         break;
 		case GETPRECISION:     wtm = GETPRECISION_MSG;     break;
@@ -1070,9 +1354,8 @@ char *wtm;
 		    break;
 	    } /* end switch() */
 
-	    fprintf(stderr, "%s %s: %s\n", 
-		(prefix ? prefix : ""), wtm, 
-		(wp->rc == EZCA_OK ? OKMSG : wp->error_msg));
+	    printf("%s %s: ", (prefix ? prefix : ""), wtm);
+	    print_error(wp);
 	} /* endif */
     }
     else
@@ -1086,6 +1369,7 @@ char *wtm;
 	    {
 		case GET:              wtm = GET_MSG;              break;
 		case PUT:              wtm = PUT_MSG;              break;
+		case PUTOLDCA:         wtm = PUTOLDCA_MSG;         break;
 		case GETUNITS:         wtm = GETUNITS_MSG;         break;
 		case GETNELEM:         wtm = GETNELEM_MSG;         break;
 		case GETPRECISION:     wtm = GETPRECISION_MSG;     break;
@@ -1119,10 +1403,8 @@ char *wtm;
 		    break;
 	    } /* end switch() */
 
-	    fprintf(stderr, "%s %s: %s\n", 
-		(prefix ? prefix : ""), wtm, 
-		(wp->rc == EZCA_OK ? OKMSG : wp->error_msg));
-
+	    printf("%s %s: ", (prefix ? prefix : ""), wtm);
+	    print_error(wp);
 	} /* endfor */
     } /* endif */
 
@@ -1228,34 +1510,33 @@ int rc;
 
 	/* filling work */
 	wp->worktype = CLEARMONITOR;
-
-	if (valid_pvname(pvname))
-	{
-	    strncpy(wp->pvname, pvname, sizeof(wp->pvname));
-	    wp->pvname[sizeof(wp->pvname)-1] = '\0';
-	}
-	else
-	    wp->pvname[0] = '\0';
-
 	wp->ezcadatatype = type;
 
 	/* checking input args */
 
-	if (!*(wp->pvname))
+	if (!pvname)
 	{
 	    wp->rc = EZCA_INVALIDARG;
-	    strcpy(wp->error_msg, INVALID_PVNAME_MSG);
+	    wp->error_msg = ErrorMsgs[INVALID_PVNAME_MSG_IDX];
 
 	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
+		print_error(wp);
+	} 
+	else if (!(wp->pvname = strdup(pvname)))
+	{
+	    wp->rc = EZCA_FAILEDMALLOC;
+	    wp->error_msg = ErrorMsgs[FAILED_MALLOC_MSG_IDX];
+
+	    if (AutoErrorMessage)
+		print_error(wp);
 	} 
 	else if (!VALID_EZCA_DATA_TYPE(wp->ezcadatatype))
 	{
 	    wp->rc = EZCA_INVALIDARG;
-	    strcpy(wp->error_msg, INVALID_TYPE_MSG);
+	    wp->error_msg = ErrorMsgs[INVALID_TYPE_MSG_IDX];
 
 	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
+		print_error(wp);
 	} 
 	else
 	{
@@ -1438,40 +1719,25 @@ int rc;
 	{
 	    status = EzcaPendEvent((struct work *) NULL, sec);
 
-	    switch (status)
+	    if (status == ECA_TIMEOUT)
+		/* normal return code */
+		wp->rc = EZCA_OK; 
+	    else
 	    {
-		case ECA_TIMEOUT: 
-		    /* normal return code */
-		    wp->rc = EZCA_OK; 
-		    break; 
-		case ECA_NORMAL:
-		    wp->rc = EZCA_CAFAILURE;
-		    strcpy(wp->error_msg, ECA_NORMAL_MSG);
-		    if (AutoErrorMessage)
-			printf("%s\n", wp->error_msg);
-		    break;
-		case ECA_EVDISALLOW:
-		    wp->rc = EZCA_CAFAILURE;
-		    strcpy(wp->error_msg, ECA_EVDISALLOW_MSG);
-		    if (AutoErrorMessage)
-			printf("%s\n", wp->error_msg);
-		    break;
-		default:
-		    wp->rc = EZCA_CAFAILURE;
-		    sprintf(wp->error_msg, "%s %d", UNKNOWN_RC_MSG, wp->rc);
-		    if (AutoErrorMessage)
-			printf("%s\n", wp->error_msg);
-		    break;
-	    } /* end switch() */
+		wp->rc = EZCA_CAFAILURE;
+		wp->error_msg = ErrorMsgs[CAPENDEVENT_MSG_IDX];
+		wp->aux_error_msg = strdup(ca_message(status));
+		if (AutoErrorMessage)
+		    print_error(wp);
+	    } /* endif */
 	}
 	else
 	{
 	    wp->rc = EZCA_INVALIDARG;
-
-	    strcpy(wp->error_msg, INVALID_ARG_MSG);
+	    wp->error_msg = ErrorMsgs[INVALID_ARG_MSG_IDX];
 
 	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
+		print_error(wp);
 	} /* endif */
 
 	rc = wp->rc;
@@ -1617,45 +1883,52 @@ int rc;
 
 	if (cid)
 	{
-	    if (valid_pvname(pvname))
+	    if (pvname)
 	    {
 		/* arguments are valid */
 
-		strncpy(wp->pvname, pvname, sizeof(wp->pvname));
-		wp->pvname[sizeof(wp->pvname)-1] = '\0';
-
-		get_channel(wp, &cp);
-
-		if (cp)
+		if (wp->pvname = strdup(pvname))
 		{
-		    /* everything OK */
 
-		    /* wp->rc set by get_channel() if something went wrong */
-		    /* NOTE:  error message printed by get_channel()       */
-		    /*        also if AutoErrorMessage is set.             */
+		    get_channel(wp, &cp);
 
-		    wp->rc = EZCA_OK;
-		    *cid = &(cp->cid);
+		    if (cp)
+		    {
+			/* everything OK */
+
+			/* wp->rc set by get_channel() if something went bad */
+			/* NOTE:  error message printed by get_channel()     */
+			/*        also if AutoErrorMessage is set.           */
+
+			wp->rc = EZCA_OK;
+			*cid = &(cp->cid);
+		    } /* endif */
+		}
+		else
+		{
+		    wp->rc = EZCA_FAILEDMALLOC;
+		    wp->error_msg = ErrorMsgs[FAILED_MALLOC_MSG_IDX];
+
+		    if (AutoErrorMessage)
+			print_error(wp);
 		} /* endif */
 	    }
 	    else
 	    {
-		wp->rc = EZCA_INVALIDPVNAME;
-
-		strcpy(wp->error_msg, INVALID_PVNAME_MSG);
+		wp->rc = EZCA_INVALIDARG;
+		wp->error_msg = ErrorMsgs[INVALID_PVNAME_MSG_IDX];
 
 		if (AutoErrorMessage)
-		    printf("%s\n", wp->error_msg);
+		    print_error(wp);
 	    } /* endif */
 	}
 	else
 	{
 	    wp->rc = EZCA_INVALIDARG;
-
-	    strcpy(wp->error_msg, INVALID_PBUFF_MSG);
+	    wp->error_msg = ErrorMsgs[INVALID_PBUFF_MSG_IDX];
 
 	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
+		print_error(wp);
 	} /* endif */
 
 	rc = wp->rc;
@@ -1695,34 +1968,33 @@ int rc;
 	/* filling work */
 
 	wp->worktype = SETMONITOR;
-
-	if (valid_pvname(pvname))
-	{
-	    strncpy(wp->pvname, pvname, sizeof(wp->pvname));
-	    wp->pvname[sizeof(wp->pvname)-1] = '\0';
-	}
-	else
-	    wp->pvname[0] = '\0';
-
 	wp->ezcadatatype = type;
 
 	/* checking input args */
 
-	if (!*(wp->pvname))
-	{
-	    wp->rc = EZCA_INVALIDPVNAME;
-	    strcpy(wp->error_msg, INVALID_PVNAME_MSG);
+        if (!pvname)
+        {
+            wp->rc = EZCA_INVALIDARG;
+            wp->error_msg = ErrorMsgs[INVALID_PVNAME_MSG_IDX];
 
-	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
-	} 
+            if (AutoErrorMessage)
+		print_error(wp);
+        } 
+        else if (!(wp->pvname = strdup(pvname)))
+        {
+            wp->rc = EZCA_FAILEDMALLOC;
+            wp->error_msg = ErrorMsgs[FAILED_MALLOC_MSG_IDX];
+
+            if (AutoErrorMessage)
+		print_error(wp);
+        } 
 	else if (!VALID_EZCA_DATA_TYPE(wp->ezcadatatype))
 	{
 	    wp->rc = EZCA_INVALIDARG;
-	    strcpy(wp->error_msg, INVALID_TYPE_MSG);
+	    wp->error_msg = ErrorMsgs[INVALID_TYPE_MSG_IDX];
 
 	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
+		print_error(wp);
 	} 
 	else
 	{
@@ -1878,10 +2150,10 @@ int rc;
 		    else
 		    {
 			wp->rc = EZCA_FAILEDMALLOC;
-			strcpy(wp->error_msg, FAILED_MALLOC_MSG);
+			wp->error_msg = ErrorMsgs[FAILED_MALLOC_MSG_IDX];
 
 			if (AutoErrorMessage)
-			    printf("%s\n", wp->error_msg);
+			    print_error(wp);
 		    } /* endif */
 		} /* endif */
 	    } /* endif */
@@ -1931,11 +2203,10 @@ int rc;
 	else
 	{
 	    wp->rc = EZCA_INVALIDARG;
-
-	    strcpy(wp->error_msg, INVALID_ARG_MSG);
+	    wp->error_msg = ErrorMsgs[INVALID_ARG_MSG_IDX];
 
 	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
+		print_error(wp);
 	} /* endif */
 
 	rc = wp->rc;
@@ -1981,11 +2252,10 @@ int rc;
 	else
 	{
 	    wp->rc = EZCA_INVALIDARG;
-
-	    strcpy(wp->error_msg, INVALID_ARG_MSG);
+	    wp->error_msg = ErrorMsgs[INVALID_ARG_MSG_IDX];
 
 	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
+		print_error(wp);
 	} /* endif */
 
 	rc = wp->rc;
@@ -2026,11 +2296,10 @@ int rc;
 	{
 	    /* already in a group */
 	    wp->rc = EZCA_INGROUP;
-
-	    strcpy(wp->error_msg, INGROUP_MSG);
+	    wp->error_msg = ErrorMsgs[INGROUP_MSG_IDX];
 
 	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
+		print_error(wp);
 	}
 	else
 	{
@@ -2165,50 +2434,50 @@ int rc;
 	/* filling work */
 	wp->worktype = GET;
 
-	if (valid_pvname(pvname))
-	{
-	    strncpy(wp->pvname, pvname, sizeof(wp->pvname));
-	    wp->pvname[sizeof(wp->pvname)-1] = '\0';
-	}
-	else
-	    wp->pvname[0] = '\0';
-
 	wp->ezcadatatype = type;
 	wp->nelem = nelem;
 	wp->pval = buff;
 
 	/* checking input args */
-	if (!*(wp->pvname))
-	{
-	    wp->rc = EZCA_INVALIDPVNAME;
-	    strcpy(wp->error_msg, INVALID_PVNAME_MSG);
+        if (!pvname)
+        {
+            wp->rc = EZCA_INVALIDARG;
+            wp->error_msg = ErrorMsgs[INVALID_PVNAME_MSG_IDX];
 
-	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
-	} 
+            if (AutoErrorMessage)
+		print_error(wp);
+        } 
+        else if (!(wp->pvname = strdup(pvname)))
+        {
+            wp->rc = EZCA_FAILEDMALLOC;
+            wp->error_msg = ErrorMsgs[FAILED_MALLOC_MSG_IDX];
+
+            if (AutoErrorMessage)
+		print_error(wp);
+        } 
 	else if (!VALID_EZCA_DATA_TYPE(wp->ezcadatatype))
 	{
 	    wp->rc = EZCA_INVALIDARG;
-	    strcpy(wp->error_msg, INVALID_TYPE_MSG);
+            wp->error_msg = ErrorMsgs[INVALID_TYPE_MSG_IDX];
 
 	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
+		print_error(wp);
 	} 
 	else if (wp->nelem <= 0)
 	{
 	    wp->rc = EZCA_INVALIDARG;
-	    strcpy(wp->error_msg, INVALID_NELEM_MSG);
+            wp->error_msg = ErrorMsgs[INVALID_NELEM_MSG_IDX];
 
 	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
+		print_error(wp);
 	}
 	else if (!(wp->pval))
 	{
 	    wp->rc = EZCA_INVALIDARG;
-	    strcpy(wp->error_msg, INVALID_PBUFF_MSG);
+            wp->error_msg = ErrorMsgs[INVALID_PBUFF_MSG_IDX];
 
 	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
+		print_error(wp);
 	}
 	else
 	{
@@ -2216,7 +2485,9 @@ int rc;
 	    wp->rc = EZCA_OK;
 	} /* endif */
 
-	if (wp->rc == EZCA_OK)
+	if (InGroup)
+	    append_to_work_list(wp);
+	else if (wp->rc == EZCA_OK)
 	{
 	    /* all input args OK */
 
@@ -2230,9 +2501,7 @@ int rc;
 		if (EzcaConnected(cp))
 		{
 		    /* channel is currently connected */
-		    if (get_from_monitor(wp, cp))
-			wp->needs_work = FALSE;
-		    else
+		    if (!get_from_monitor(wp, cp))
 		    {
 			/* did not find an active   */
 			/* monitor that had a value */
@@ -2241,16 +2510,13 @@ int rc;
 			if (Trace || Debug)
 	    printf("ezcaGet(): did not find an active monitor with a value\n");
 
-			if (wp->needs_work = issue_get(wp, cp))
+			if (issue_get(wp, cp))
 			{
 			    /* a EzcaArrayGetCallback() */
 			    /* was successfully  issued */
-			    if (!InGroup)
-			    {
-				issue_wait(wp);
-				if (AutoErrorMessage && wp->rc != EZCA_OK)
-				    printf("%s\n", wp->error_msg);
-			    } /* endif */
+			    issue_wait(wp);
+			    if (AutoErrorMessage && wp->rc != EZCA_OK)
+				print_error(wp);
 			} /* endif */
 		    } /* endif */
 		}
@@ -2259,16 +2525,13 @@ int rc;
 		    /* channel is not connected */
 
 		    wp->rc = EZCA_NOTCONNECTED;
-		    strcpy(wp->error_msg, NOT_CONNECTED_MSG);
+		    wp->error_msg = ErrorMsgs[NOT_CONNECTED_MSG_IDX];
 
 		    if (AutoErrorMessage)
-			printf("%s\n", wp->error_msg);
+			print_error(wp);
 		} /* endif */
 	    } /* endif */
 	} /* endif */
-
-	if (InGroup)
-	    append_to_work_list(wp);
 
 	rc = wp->rc;
     }
@@ -2307,42 +2570,41 @@ int rc;
 	/* filling work */
 
 	wp->worktype = GETCONTROLLIMITS;
-
-	if (valid_pvname(pvname))
-	{
-	    strncpy(wp->pvname, pvname, sizeof(wp->pvname));
-	    wp->pvname[sizeof(wp->pvname)-1] = '\0';
-	}
-	else
-	    wp->pvname[0] = '\0';
-
 	wp->d1p = low;
 	wp->d2p = high;
 	
 	/* checking input args */
-	if (!*(wp->pvname))
-	{
-	    wp->rc = EZCA_INVALIDPVNAME;
-	    strcpy(wp->error_msg, INVALID_PVNAME_MSG);
+        if (!pvname)
+        {
+            wp->rc = EZCA_INVALIDARG;
+            wp->error_msg = ErrorMsgs[INVALID_PVNAME_MSG_IDX];
 
-	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
-	} 
+            if (AutoErrorMessage)
+		print_error(wp);
+        } 
+        else if (!(wp->pvname = strdup(pvname)))
+        {
+            wp->rc = EZCA_FAILEDMALLOC;
+            wp->error_msg = ErrorMsgs[FAILED_MALLOC_MSG_IDX];
+
+            if (AutoErrorMessage)
+		print_error(wp);
+        } 
 	else if (!(wp->d1p))
 	{
 	    wp->rc = EZCA_INVALIDARG;
-	    strcpy(wp->error_msg, INVALID_PBUFF_MSG);
+	    wp->error_msg = ErrorMsgs[INVALID_PBUFF_MSG_IDX];
 
 	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
+		print_error(wp);
 	}
 	else if (!(wp->d2p))
 	{
 	    wp->rc = EZCA_INVALIDARG;
-	    strcpy(wp->error_msg, INVALID_PBUFF_MSG);
+	    wp->error_msg = ErrorMsgs[INVALID_PBUFF_MSG_IDX];
 
 	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
+		print_error(wp);
 	}
 	else
 	{
@@ -2350,7 +2612,9 @@ int rc;
 	    wp->rc = EZCA_OK;
 	} /* endif */
 
-	if (wp->rc == EZCA_OK)
+	if (InGroup)
+	    append_to_work_list(wp);
+	else if (wp->rc == EZCA_OK)
 	{
 	    /* all input args OK */
 
@@ -2369,16 +2633,13 @@ int rc;
 
 		    wp->nelem = EzcaElementCount(cp);
 
-		    if (wp->needs_work = issue_get(wp, cp))
+		    if (issue_get(wp, cp))
 		    {
 			/* a EzcaArrayGetCallback() */
 			/* was successfully  issued */
-			if (!InGroup)
-			{
-			    issue_wait(wp);
-			    if (AutoErrorMessage && wp->rc != EZCA_OK)
-				printf("%s\n", wp->error_msg);
-			} /* endif */
+			issue_wait(wp);
+			if (AutoErrorMessage && wp->rc != EZCA_OK)
+			    print_error(wp);
 		    } /* endif */
 		}
 		else
@@ -2386,16 +2647,13 @@ int rc;
 		    /* channel is not connected */
 
 		    wp->rc = EZCA_NOTCONNECTED;
-		    strcpy(wp->error_msg, NOT_CONNECTED_MSG);
+		    wp->error_msg = ErrorMsgs[NOT_CONNECTED_MSG_IDX];
 
 		    if (AutoErrorMessage)
-			printf("%s\n", wp->error_msg);
+			print_error(wp);
 		} /* endif */
 	    } /* endif */
 	} /* endif */
-
-	if (InGroup)
-	    append_to_work_list(wp);
 
 	rc = wp->rc;
     }
@@ -2434,42 +2692,41 @@ int rc;
 	/* filling work */
 
 	wp->worktype = GETGRAPHICLIMITS;
-
-	if (valid_pvname(pvname))
-	{
-	    strncpy(wp->pvname, pvname, sizeof(wp->pvname));
-	    wp->pvname[sizeof(wp->pvname)-1] = '\0';
-	}
-	else
-	    wp->pvname[0] = '\0';
-
 	wp->d1p = low;
 	wp->d2p = high;
 
 	/* checking input args */
-	if (!*(wp->pvname))
-	{
-	    wp->rc = EZCA_INVALIDPVNAME;
-	    strcpy(wp->error_msg, INVALID_PVNAME_MSG);
+        if (!pvname)
+        {
+            wp->rc = EZCA_INVALIDARG;
+            wp->error_msg = ErrorMsgs[INVALID_PVNAME_MSG_IDX];
 
-	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
-	} 
+            if (AutoErrorMessage)
+		print_error(wp);
+        } 
+        else if (!(wp->pvname = strdup(pvname)))
+        {
+            wp->rc = EZCA_FAILEDMALLOC;
+            wp->error_msg = ErrorMsgs[FAILED_MALLOC_MSG_IDX];
+
+            if (AutoErrorMessage)
+		print_error(wp);
+        } 
 	else if (!(wp->d1p))
 	{
 	    wp->rc = EZCA_INVALIDARG;
-	    strcpy(wp->error_msg, INVALID_PBUFF_MSG);
+	    wp->error_msg = ErrorMsgs[INVALID_PBUFF_MSG_IDX];
 
 	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
+		print_error(wp);
 	}
 	else if (!(wp->d2p))
 	{
 	    wp->rc = EZCA_INVALIDARG;
-	    strcpy(wp->error_msg, INVALID_PBUFF_MSG);
+	    wp->error_msg = ErrorMsgs[INVALID_PBUFF_MSG_IDX];
 
 	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
+		print_error(wp);
 	}
 	else
 	{
@@ -2477,7 +2734,9 @@ int rc;
 	    wp->rc = EZCA_OK;
 	} /* endif */
 
-	if (wp->rc == EZCA_OK)
+	if (InGroup)
+	    append_to_work_list(wp);
+	else if (wp->rc == EZCA_OK)
 	{
 	    /* all input args OK */
 
@@ -2496,16 +2755,13 @@ int rc;
 
 		    wp->nelem = EzcaElementCount(cp);
 
-		    if (wp->needs_work = issue_get(wp, cp))
+		    if (issue_get(wp, cp))
 		    {
 			/* a EzcaArrayGetCallback() */
 			/* was successfully  issued */
-			if (!InGroup)
-			{
-			    issue_wait(wp);
-			    if (AutoErrorMessage && wp->rc != EZCA_OK)
-				printf("%s\n", wp->error_msg);
-			} /* endif */
+			issue_wait(wp);
+			if (AutoErrorMessage && wp->rc != EZCA_OK)
+			    print_error(wp);
 		    } /* endif */
 		}
 		else
@@ -2513,16 +2769,13 @@ int rc;
 		    /* channel is not connected */
 
 		    wp->rc = EZCA_NOTCONNECTED;
-		    strcpy(wp->error_msg, NOT_CONNECTED_MSG);
+		    wp->error_msg = ErrorMsgs[NOT_CONNECTED_MSG_IDX];
 
 		    if (AutoErrorMessage)
-			printf("%s\n", wp->error_msg);
+			print_error(wp);
 		} /* endif */
 	    } /* endif */
 	} /* endif */
-
-	if (InGroup)
-	    append_to_work_list(wp);
 
 	rc = wp->rc;
 	    
@@ -2562,33 +2815,32 @@ int rc;
 	/* filling work */
 
 	wp->worktype = GETNELEM;
-
-	if (valid_pvname(pvname))
-	{
-	    strncpy(wp->pvname, pvname, sizeof(wp->pvname));
-	    wp->pvname[sizeof(wp->pvname)-1] = '\0';
-	}
-	else
-	    wp->pvname[0] = '\0';
-
 	wp->intp = nelem;
 
 	/* checking input args */
-	if (!*(wp->pvname))
-	{
-	    wp->rc = EZCA_INVALIDPVNAME;
-	    strcpy(wp->error_msg, INVALID_PVNAME_MSG);
+        if (!pvname)
+        {
+            wp->rc = EZCA_INVALIDARG;
+            wp->error_msg = ErrorMsgs[INVALID_PVNAME_MSG_IDX];
 
-	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
-	} 
+            if (AutoErrorMessage)
+		print_error(wp);
+        } 
+        else if (!(wp->pvname = strdup(pvname)))
+        {
+            wp->rc = EZCA_FAILEDMALLOC;
+            wp->error_msg = ErrorMsgs[FAILED_MALLOC_MSG_IDX];
+
+            if (AutoErrorMessage)
+		print_error(wp);
+        } 
 	else if (!(wp->intp))
 	{
 	    wp->rc = EZCA_INVALIDARG;
-	    strcpy(wp->error_msg, INVALID_PBUFF_MSG);
+	    wp->error_msg = ErrorMsgs[INVALID_PBUFF_MSG_IDX];
 
 	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
+		print_error(wp);
 	}
 	else
 	{
@@ -2596,7 +2848,9 @@ int rc;
 	    wp->rc = EZCA_OK;
 	} /* endif */
 
-	if (wp->rc == EZCA_OK)
+	if (InGroup)
+	    append_to_work_list(wp);
+	else if (wp->rc == EZCA_OK)
 	{
 	    /* all input args OK */
 
@@ -2617,16 +2871,13 @@ int rc;
 		    /* channel is not connected */
 
 		    wp->rc = EZCA_NOTCONNECTED;
-		    strcpy(wp->error_msg, NOT_CONNECTED_MSG);
+		    wp->error_msg = ErrorMsgs[NOT_CONNECTED_MSG_IDX];
 
 		    if (AutoErrorMessage)
-			printf("%s\n", wp->error_msg);
+			print_error(wp);
 		} /* endif */
 	    } /* endif */
 	} /* endif */
-
-	if (InGroup)
-	    append_to_work_list(wp);
 
 	rc = wp->rc;
 	    
@@ -2666,33 +2917,32 @@ int rc;
 	/* filling work */
 
 	wp->worktype = GETPRECISION;
-
-	if (valid_pvname(pvname))
-	{
-	    strncpy(wp->pvname, pvname, sizeof(wp->pvname));
-	    wp->pvname[sizeof(wp->pvname)-1] = '\0';
-	}
-	else
-	    wp->pvname[0] = '\0';
-
 	wp->s1p = precision;
 
 	/* checking input args */
-	if (!*(wp->pvname))
-	{
-	    wp->rc = EZCA_INVALIDPVNAME;
-	    strcpy(wp->error_msg, INVALID_PVNAME_MSG);
+        if (!pvname)
+        {
+            wp->rc = EZCA_INVALIDARG;
+            wp->error_msg = ErrorMsgs[INVALID_PVNAME_MSG_IDX];
 
-	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
-	} 
+            if (AutoErrorMessage)
+		print_error(wp);
+        } 
+        else if (!(wp->pvname = strdup(pvname)))
+        {
+            wp->rc = EZCA_FAILEDMALLOC;
+            wp->error_msg = ErrorMsgs[FAILED_MALLOC_MSG_IDX];
+
+            if (AutoErrorMessage)
+		print_error(wp);
+        } 
 	else if (!(wp->s1p))
 	{
 	    wp->rc = EZCA_INVALIDARG;
-	    strcpy(wp->error_msg, INVALID_PBUFF_MSG);
+	    wp->error_msg = ErrorMsgs[INVALID_PBUFF_MSG_IDX];
 
 	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
+		print_error(wp);
 	}
 	else
 	{
@@ -2700,7 +2950,9 @@ int rc;
 	    wp->rc = EZCA_OK;
 	} /* endif */
 
-	if (wp->rc == EZCA_OK)
+	if (InGroup)
+	    append_to_work_list(wp);
+	else if (wp->rc == EZCA_OK)
 	{
 	    /* all input args OK */
 	    get_channel(wp, &cp);
@@ -2717,16 +2969,13 @@ int rc;
 		    /* although will never look at count nor value   */
 		    wp->nelem = EzcaElementCount(cp);
 
-		    if (wp->needs_work = issue_get(wp, cp))
+		    if (issue_get(wp, cp))
 		    {
 			/* a EzcaArrayGetCallback() */
 			/* was successfully  issued */
-			if (!InGroup)
-			{
-			    issue_wait(wp);
-			    if (AutoErrorMessage && wp->rc != EZCA_OK)
-				printf("%s\n", wp->error_msg);
-			} /* endif */
+			issue_wait(wp);
+			if (AutoErrorMessage && wp->rc != EZCA_OK)
+			    print_error(wp);
 		    } /* endif */
 		}
 		else
@@ -2734,16 +2983,13 @@ int rc;
 		    /* channel is not connected */
 
 		    wp->rc = EZCA_NOTCONNECTED;
-		    strcpy(wp->error_msg, NOT_CONNECTED_MSG);
+		    wp->error_msg = ErrorMsgs[NOT_CONNECTED_MSG_IDX];
 
 		    if (AutoErrorMessage)
-			printf("%s\n", wp->error_msg);
+			print_error(wp);
 		} /* endif */
 	    } /* endif */
 	} /* endif */
-
-	if (InGroup)
-	    append_to_work_list(wp);
 
 	rc = wp->rc;
 	    
@@ -2784,51 +3030,50 @@ int rc;
 	/* filling work */
 
 	wp->worktype = GETSTATUS;
-
-	if (valid_pvname(pvname))
-	{
-	    strncpy(wp->pvname, pvname, sizeof(wp->pvname));
-	    wp->pvname[sizeof(wp->pvname)-1] = '\0';
-	}
-	else
-	    wp->pvname[0] = '\0';
-
 	wp->tsp = timestamp;
 	wp->status = status;
 	wp->severity = severity;
 
 	/* checking input args */
-	if (!*(wp->pvname))
-	{
-	    wp->rc = EZCA_INVALIDPVNAME;
-	    strcpy(wp->error_msg, INVALID_PVNAME_MSG);
+        if (!pvname)
+        {
+            wp->rc = EZCA_INVALIDARG;
+            wp->error_msg = ErrorMsgs[INVALID_PVNAME_MSG_IDX];
 
-	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
-	} 
+            if (AutoErrorMessage)
+		print_error(wp);
+        } 
+        else if (!(wp->pvname = strdup(pvname)))
+        {
+            wp->rc = EZCA_FAILEDMALLOC;
+            wp->error_msg = ErrorMsgs[FAILED_MALLOC_MSG_IDX];
+
+            if (AutoErrorMessage)
+		print_error(wp);
+        } 
 	else if (!(wp->tsp))
 	{
 	    wp->rc = EZCA_INVALIDARG;
-	    strcpy(wp->error_msg, INVALID_PBUFF_MSG);
+	    wp->error_msg = ErrorMsgs[INVALID_PBUFF_MSG_IDX];
 
 	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
+		print_error(wp);
 	} 
 	else if (!(wp->status))
 	{
 	    wp->rc = EZCA_INVALIDARG;
-	    strcpy(wp->error_msg, INVALID_PBUFF_MSG);
+	    wp->error_msg = ErrorMsgs[INVALID_PBUFF_MSG_IDX];
 
 	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
+		print_error(wp);
 	}
 	else if (!(wp->severity))
 	{
 	    wp->rc = EZCA_INVALIDARG;
-	    strcpy(wp->error_msg, INVALID_PBUFF_MSG);
+	    wp->error_msg = ErrorMsgs[INVALID_PBUFF_MSG_IDX];
 
 	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
+		print_error(wp);
 	}
 	else
 	{
@@ -2836,7 +3081,9 @@ int rc;
 	    wp->rc = EZCA_OK;
 	} /* endif */
 
-	if (wp->rc == EZCA_OK)
+	if (InGroup)
+	    append_to_work_list(wp);
+	else if (wp->rc == EZCA_OK)
 	{
 	    /* all input args OK */
 
@@ -2851,9 +3098,7 @@ int rc;
 		{
 		    /* channel is currently connected */
 
-		    if (get_from_monitor(wp, cp))
-			wp->needs_work = FALSE;
-		    else
+		    if (!get_from_monitor(wp, cp))
 		    {
 			/* did not find an active   */
 			/* monitor that had a value */
@@ -2866,16 +3111,13 @@ int rc;
 			/* although will never look at count nor value   */
 			wp->nelem = EzcaElementCount(cp);
 
-			if (wp->needs_work = issue_get(wp, cp))
+			if (issue_get(wp, cp))
 			{
 			    /* a EzcaArrayGetCallback() */
 			    /* was successfully  issued */
-			    if (!InGroup)
-			    {
-				issue_wait(wp);
-				if (AutoErrorMessage && wp->rc != EZCA_OK)
-				    printf("%s\n", wp->error_msg);
-			    } /* endif */
+			    issue_wait(wp);
+			    if (AutoErrorMessage && wp->rc != EZCA_OK)
+				print_error(wp);
 			} /* endif */
 		    } /* endif */
 		}
@@ -2884,16 +3126,13 @@ int rc;
 		    /* channel is not connected */
 
 		    wp->rc = EZCA_NOTCONNECTED;
-		    strcpy(wp->error_msg, NOT_CONNECTED_MSG);
+		    wp->error_msg = ErrorMsgs[NOT_CONNECTED_MSG_IDX];
 
 		    if (AutoErrorMessage)
-			printf("%s\n", wp->error_msg);
+			print_error(wp);
 		} /* endif */
 	    } /* endif */
 	} /* endif */
-
-	if (InGroup)
-	    append_to_work_list(wp);
 
 	rc = wp->rc;
 	    
@@ -2933,33 +3172,32 @@ int rc;
 	/* filling work */
 
 	wp->worktype = GETUNITS;
-
-	if (valid_pvname(pvname))
-	{
-	    strncpy(wp->pvname, pvname, sizeof(wp->pvname));
-	    wp->pvname[sizeof(wp->pvname)-1] = '\0';
-	}
-	else
-	    wp->pvname[0] = '\0';
-
 	wp->units = units;
 
 	/* checking input args */
-	if (!*(wp->pvname))
-	{
-	    wp->rc = EZCA_INVALIDPVNAME;
-	    strcpy(wp->error_msg, INVALID_PVNAME_MSG);
+        if (!pvname)
+        {
+            wp->rc = EZCA_INVALIDARG;
+            wp->error_msg = ErrorMsgs[INVALID_PVNAME_MSG_IDX];
 
-	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
-	} 
+            if (AutoErrorMessage)
+		print_error(wp);
+        } 
+        else if (!(wp->pvname = strdup(pvname)))
+        {
+            wp->rc = EZCA_FAILEDMALLOC;
+            wp->error_msg = ErrorMsgs[FAILED_MALLOC_MSG_IDX];
+
+            if (AutoErrorMessage)
+		print_error(wp);
+        } 
 	else if (!(wp->units))
 	{
 	    wp->rc = EZCA_INVALIDARG;
-	    strcpy(wp->error_msg, INVALID_PBUFF_MSG);
+	    wp->error_msg = ErrorMsgs[INVALID_PBUFF_MSG_IDX];
 
 	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
+		print_error(wp);
 	}
 	else
 	{
@@ -2967,7 +3205,9 @@ int rc;
 	    wp->rc = EZCA_OK;
 	} /* endif */
 	    
-	if (wp->rc == EZCA_OK)
+	if (InGroup)
+	    append_to_work_list(wp);
+	else if (wp->rc == EZCA_OK)
 	{
 	    /* all input args OK */
 	    get_channel(wp, &cp);
@@ -2984,16 +3224,13 @@ int rc;
 		    /* although will never look at count nor value   */
 		    wp->nelem = EzcaElementCount(cp);
 
-		    if (wp->needs_work = issue_get(wp, cp))
+		    if (issue_get(wp, cp))
 		    {
 			/* a EzcaArrayGetCallback() */
 			/* was successfully  issued */
-			if (!InGroup)
-			{
-			    issue_wait(wp);
-			    if (AutoErrorMessage && wp->rc != EZCA_OK)
-				printf("%s\n", wp->error_msg);
-			} /* endif */
+			issue_wait(wp);
+			if (AutoErrorMessage && wp->rc != EZCA_OK)
+			    print_error(wp);
 		    } /* endif */
 		}
 		else
@@ -3001,16 +3238,13 @@ int rc;
 		    /* channel is not connected */
 
 		    wp->rc = EZCA_NOTCONNECTED;
-		    strcpy(wp->error_msg, NOT_CONNECTED_MSG);
+		    wp->error_msg = ErrorMsgs[NOT_CONNECTED_MSG_IDX];
 
 		    if (AutoErrorMessage)
-			printf("%s\n", wp->error_msg);
+			print_error(wp);
 		} /* endif */
 	    } /* endif */
 	} /* endif */
-
-	if (InGroup)
-	    append_to_work_list(wp);
 
 	rc = wp->rc;
 
@@ -3049,82 +3283,78 @@ int rc;
 	ListPrint = (InGroup ? LASTONLY : ListPrint);
 
 	/* filling work */
-
 	wp->worktype = GETWITHSTATUS;
-
-	if (valid_pvname(pvname))
-	{
-	    strncpy(wp->pvname, pvname, sizeof(wp->pvname));
-	    wp->pvname[sizeof(wp->pvname)-1] = '\0';
-	}
-	else
-	    wp->pvname[0] = '\0';
-
 	wp->ezcadatatype = type;
 	wp->nelem = nelem;
 	wp->pval = buff;
-
 	wp->tsp = timestamp;
 	wp->status = status;
 	wp->severity = severity;
 
 	/* checking input args */
+        if (!pvname)
+        {
+            wp->rc = EZCA_INVALIDARG;
+            wp->error_msg = ErrorMsgs[INVALID_PVNAME_MSG_IDX];
 
-	if (!*(wp->pvname))
-	{
-	    wp->rc = EZCA_INVALIDPVNAME;
-	    strcpy(wp->error_msg, INVALID_PVNAME_MSG);
+            if (AutoErrorMessage)
+		print_error(wp);
+        } 
+        else if (!(wp->pvname = strdup(pvname)))
+        {
+            wp->rc = EZCA_FAILEDMALLOC;
+            wp->error_msg = ErrorMsgs[FAILED_MALLOC_MSG_IDX];
 
-	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
-	} 
+            if (AutoErrorMessage)
+		print_error(wp);
+        } 
 	else if (!VALID_EZCA_DATA_TYPE(wp->ezcadatatype))
 	{
 	    wp->rc = EZCA_INVALIDARG;
-	    strcpy(wp->error_msg, INVALID_TYPE_MSG);
+	    wp->error_msg = ErrorMsgs[INVALID_TYPE_MSG_IDX];
 
 	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
+		print_error(wp);
 	} 
 	else if (wp->nelem <= 0)
 	{
 	    wp->rc = EZCA_INVALIDARG;
-	    strcpy(wp->error_msg, INVALID_NELEM_MSG);
+	    wp->error_msg = ErrorMsgs[INVALID_NELEM_MSG_IDX];
 
 	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
+		print_error(wp);
 	}
 	else if (!(wp->pval))
 	{
 	    wp->rc = EZCA_INVALIDARG;
-	    strcpy(wp->error_msg, INVALID_PBUFF_MSG);
+	    wp->error_msg = ErrorMsgs[INVALID_PBUFF_MSG_IDX];
 
 	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
+		print_error(wp);
 	}
 	else if (!(wp->tsp))
 	{
 	    wp->rc = EZCA_INVALIDARG;
-	    strcpy(wp->error_msg, INVALID_PBUFF_MSG);
+	    wp->error_msg = ErrorMsgs[INVALID_PBUFF_MSG_IDX];
 
 	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
+		print_error(wp);
 	} 
 	else if (!(wp->status))
 	{
 	    wp->rc = EZCA_INVALIDARG;
-	    strcpy(wp->error_msg, INVALID_PBUFF_MSG);
+	    wp->error_msg = ErrorMsgs[INVALID_PBUFF_MSG_IDX];
 
 	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
+		print_error(wp);
 	}
 	else if (!(wp->severity))
 	{
 	    wp->rc = EZCA_INVALIDARG;
-	    strcpy(wp->error_msg, INVALID_PBUFF_MSG);
+	    wp->error_msg = ErrorMsgs[INVALID_PBUFF_MSG_IDX];
 
 	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
+		print_error(wp);
 	}
 	else
 	{
@@ -3132,7 +3362,9 @@ int rc;
 	    wp->rc = EZCA_OK;
 	} /* endif */
 
-	if (wp->rc == EZCA_OK)
+	if (InGroup)
+	    append_to_work_list(wp);
+	else if (wp->rc == EZCA_OK)
 	{
 	    /* all input args OK */
 
@@ -3146,9 +3378,7 @@ int rc;
 		if (EzcaConnected(cp))
 		{
 		    /* channel is currently connected */
-		    if (get_from_monitor(wp, cp))
-			wp->needs_work = FALSE;
-		    else
+		    if (!get_from_monitor(wp, cp))
 		    {
 			/* did not find an active   */
 			/* monitor that had a value */
@@ -3157,16 +3387,13 @@ int rc;
 			if (Trace || Debug)
 printf("ezcaGetWithStatus(): did not find an active monitor with a value\n");
 
-			if (wp->needs_work = issue_get(wp, cp))
+			if (issue_get(wp, cp))
 			{
 			    /* a EzcaArrayGetCallback() */
 			    /* was successfully  issued */
-			    if (!InGroup)
-			    {
-				issue_wait(wp);
-				if (AutoErrorMessage && wp->rc != EZCA_OK)
-				    printf("%s\n", wp->error_msg);
-			    } /* endif */
+			    issue_wait(wp);
+			    if (AutoErrorMessage && wp->rc != EZCA_OK)
+				print_error(wp);
 			} /* endif */
 		    } /* endif */
 		}
@@ -3175,16 +3402,13 @@ printf("ezcaGetWithStatus(): did not find an active monitor with a value\n");
 		    /* channel is not connected */
 
 		    wp->rc = EZCA_NOTCONNECTED;
-		    strcpy(wp->error_msg, NOT_CONNECTED_MSG);
+		    wp->error_msg = ErrorMsgs[NOT_CONNECTED_MSG_IDX];
 
 		    if (AutoErrorMessage)
-			printf("%s\n", wp->error_msg);
+			print_error(wp);
 		} /* endif */
 	    } /* endif */
 	} /* endif */
-
-	if (InGroup)
-	    append_to_work_list(wp);
 
 	rc = wp->rc;
 	    
@@ -3227,15 +3451,6 @@ int rc;
 	/* filling work */
 
 	wp->worktype = PUT;
-
-	if (valid_pvname(pvname))
-	{
-	    strncpy(wp->pvname, pvname, sizeof(wp->pvname));
-	    wp->pvname[sizeof(wp->pvname)-1] = '\0';
-	}
-	else
-	    wp->pvname[0] = '\0';
-
 	wp->ezcadatatype = type;
 	wp->nelem = nelem;
 
@@ -3283,37 +3498,45 @@ int rc;
 	    wp->pval = (void *) NULL;
 
 	/* checking input args */
-	if (!*(wp->pvname))
-	{
-	    wp->rc = EZCA_INVALIDPVNAME;
-	    strcpy(wp->error_msg, INVALID_PVNAME_MSG);
+        if (!pvname)
+        {
+            wp->rc = EZCA_INVALIDARG;
+            wp->error_msg = ErrorMsgs[INVALID_PVNAME_MSG_IDX];
 
-	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
-	} 
+            if (AutoErrorMessage)
+		print_error(wp);
+        } 
+        else if (!(wp->pvname = strdup(pvname)))
+        {
+            wp->rc = EZCA_FAILEDMALLOC;
+            wp->error_msg = ErrorMsgs[FAILED_MALLOC_MSG_IDX];
+
+            if (AutoErrorMessage)
+		print_error(wp);
+        } 
 	else if (!VALID_EZCA_DATA_TYPE(wp->ezcadatatype))
 	{
 	    wp->rc = EZCA_INVALIDARG;
-	    strcpy(wp->error_msg, INVALID_TYPE_MSG);
+	    wp->error_msg = ErrorMsgs[INVALID_TYPE_MSG_IDX];
 
 	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
+		print_error(wp);
 	} 
 	else if (wp->nelem <= 0)
 	{
 	    wp->rc = EZCA_INVALIDARG;
-	    strcpy(wp->error_msg, INVALID_NELEM_MSG);
+	    wp->error_msg = ErrorMsgs[INVALID_NELEM_MSG_IDX];
 
 	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
+		print_error(wp);
 	}
 	else if (!(wp->pval))
 	{
 	    wp->rc = EZCA_INVALIDARG;
-	    strcpy(wp->error_msg, INVALID_PBUFF_MSG);
+	    wp->error_msg = ErrorMsgs[INVALID_PBUFF_MSG_IDX];
 
 	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
+		print_error(wp);
 	}
 	else
 	{
@@ -3321,7 +3544,9 @@ int rc;
 	    wp->rc = EZCA_OK;
 	} /* endif */
 
-	if (wp->rc == EZCA_OK)
+	if (InGroup)
+	    append_to_work_list(wp);
+	else if (wp->rc == EZCA_OK)
 	{
 	    /* all input args OK */
 	    get_channel(wp, &cp);
@@ -3341,67 +3566,62 @@ int rc;
 
 			if (EzcaArrayPutCallback(wp, cp) == ECA_NORMAL)
 			{
-			    wp->needs_work = TRUE;
-
-			    if (!InGroup)
+			    for (reported = error = FALSE, attempts = 0;
+				!reported && !error && attempts<=RetryCount;
+				    attempts ++)
 			    {
-				for (reported = error = FALSE, attempts = 0;
-				    !reported && !error && attempts<=RetryCount;
-					attempts ++)
-				{
 
-				    if (Trace || Debug)
-					printf("ezcaPut(): attempt %d of %d\n", 
-					    attempts+1, RetryCount+1);
+				if (Trace || Debug)
+				    printf("ezcaPut(): attempt %d of %d\n", 
+					attempts+1, RetryCount+1);
 
-				    if (EzcaPendEvent(wp, TimeoutSeconds) 
-					    == ECA_TIMEOUT)
-					reported = wp->reported;
-				    else
-				    {
-					/* something went wrong ... rc and */
-					/* error msg have already been set */
-
-					/* need to trash this wp so it's */
-					/* never used again in case the  */
-					/* callback fires off later      */
-
-					error = TRUE;
-
-					wp->trashme = TRUE;
-
-					if (Debug)
-					    printf("trashing wp %x\n", wp);
-				    } /* endif */
-				} /* endfor */
-
-				if (reported)
-				{
-				    if (AutoErrorMessage && wp->rc != EZCA_OK)
-					printf("%s\n", wp->error_msg);
-				}
+				if (EzcaPendEvent(wp, TimeoutSeconds) 
+					== ECA_TIMEOUT)
+				    reported = wp->reported;
 				else
 				{
-				    if (!error)
-				    {
-					/* callback did not respond back */
-					/* int time no value received    */
+				    /* something went wrong ... rc and */
+				    /* error msg have already been set */
 
-					/* need to trash this wp so it's */
-					/* never used again in case the  */
-					/* callback fires off later      */
+				    /* need to trash this wp so it's */
+				    /* never used again in case the  */
+				    /* callback fires off later      */
 
-					wp->rc = EZCA_NOTIMELYRESPONSE;
-					strcpy(wp->error_msg, 
-					    NO_RESPONSE_IN_TIME_MSG);
+				    error = TRUE;
 
-					if (AutoErrorMessage)
-					    printf("%s\n", wp->error_msg);
-					wp->trashme = TRUE;
+				    wp->trashme = TRUE;
 
-					if (Debug)
-					    printf("trashing wp %x\n", wp);
-				    } /* endif */
+				    if (Debug)
+					printf("trashing wp %x\n", wp);
+				} /* endif */
+			    } /* endfor */
+
+			    if (reported)
+			    {
+				if (AutoErrorMessage && wp->rc != EZCA_OK)
+				    print_error(wp);
+			    }
+			    else
+			    {
+				if (!error)
+				{
+				    /* callback did not respond back */
+				    /* int time no value received    */
+
+				    /* need to trash this wp so it's */
+				    /* never used again in case the  */
+				    /* callback fires off later      */
+
+				    wp->rc = EZCA_NOTIMELYRESPONSE;
+				    wp->error_msg =
+					ErrorMsgs[NO_RESPONSE_IN_TIME_MSG_IDX];
+
+				    if (AutoErrorMessage)
+					print_error(wp);
+				    wp->trashme = TRUE;
+
+				    if (Debug)
+					printf("trashing wp %x\n", wp);
 				} /* endif */
 			    } /* endif */
 			}
@@ -3414,7 +3634,6 @@ int rc;
 			    /* never used again in case the  */
 			    /* callback fires off later      */
 
-			    wp->needs_work = FALSE;
 			    wp->trashme = TRUE;
 			    if (Debug)
 				printf("trashing wp %x\n", wp);
@@ -3424,10 +3643,10 @@ int rc;
 		    {
 			/* too many elements requested */
 			wp->rc = EZCA_INVALIDARG;
-			strcpy(wp->error_msg, TOO_MANY_NELEM_MSG);
+			wp->error_msg = ErrorMsgs[TOO_MANY_NELEM_MSG_IDX];
 
 			if (AutoErrorMessage)
-			    printf("%s\n", wp->error_msg);
+			    print_error(wp);
 		    } /* endif */
 		}
 		else
@@ -3435,18 +3654,13 @@ int rc;
 		    /* channel is not connected */
 
 		    wp->rc = EZCA_NOTCONNECTED;
-		    strcpy(wp->error_msg, NOT_CONNECTED_MSG);
+		    wp->error_msg = ErrorMsgs[NOT_CONNECTED_MSG_IDX];
 
 		    if (AutoErrorMessage)
-			printf("%s\n", wp->error_msg);
+			print_error(wp);
 		} /* endif */
 	    } /* endif */
-	} /* endif */
 
-	if (InGroup)
-	    append_to_work_list(wp);
-	else
-	{
 	    /* no matter what happened ... */
 	    /* freeing malloc'd memory */
 	    if (wp->pval)
@@ -3470,6 +3684,189 @@ int rc;
     return rc;
 
 } /* end ezcaPut() */
+
+/****************************************************************
+*
+*
+****************************************************************/
+
+int ezcaPutOldCa(char *pvname, char type, int nelem, void *buff)
+{
+
+struct channel *cp;
+struct work *wp;
+int nbytes;
+int attempts;
+BOOL reported, error;
+int rc;
+
+    prologue();
+
+    if (wp = get_work())
+    {
+
+	ErrorLocation = (InGroup ? LISTWORK : SINGLEWORK);
+	ListPrint = (InGroup ? LASTONLY : ListPrint);
+
+	/* filling work */
+
+	wp->worktype = PUTOLDCA;
+	wp->ezcadatatype = type;
+	wp->nelem = nelem;
+
+	/* NOTE: must make a copy of the user's buffer here, not  */
+	/*       just point to what was given to us.  we must do  */
+	/*       this because this routine might have been called */
+	/*       inside a group and the user might want to re-use */
+	/*       the buffer immediately after our call.           */
+	/* NOTE ALSO: that this allocated memory must be free'd   */
+	/*            in ezcaEndGroup() and NOT in push_work()    */
+	/*            because in push_work() we cannot be sure    */
+	/*            that this was malloc'd by us.               */
+
+	if (buff && wp->nelem > 0)
+	{
+	    switch (wp->ezcadatatype)
+	    {
+		case ezcaByte: 
+		    nbytes = wp->nelem*dbr_value_size[DBR_CHAR];   break;
+		case ezcaString:
+		    nbytes = wp->nelem*dbr_value_size[DBR_STRING]; break;
+		case ezcaShort:
+		    nbytes = wp->nelem*dbr_value_size[DBR_SHORT];  break;
+		case ezcaLong:
+		    nbytes = wp->nelem*dbr_value_size[DBR_LONG];   break;
+		case ezcaFloat:
+		    nbytes = wp->nelem*dbr_value_size[DBR_FLOAT];  break;
+		case ezcaDouble:
+		    nbytes = wp->nelem*dbr_value_size[DBR_DOUBLE]; break;
+		default:
+		    /* error message printed later in ezcaEndGroup() */
+		    nbytes = 0;                                    break;
+	    } /* end switch() */
+
+	} 
+	else
+	    nbytes = 0;
+
+	if (nbytes > 0)
+	{
+	    if (wp->pval = (void *) malloc ((unsigned) nbytes))
+		memcpy((char *) (wp->pval), (char *) buff, nbytes);
+	}
+	else
+	    wp->pval = (void *) NULL;
+
+	/* checking input args */
+        if (!pvname)
+        {
+            wp->rc = EZCA_INVALIDARG;
+            wp->error_msg = ErrorMsgs[INVALID_PVNAME_MSG_IDX];
+
+            if (AutoErrorMessage)
+		print_error(wp);
+        } 
+        else if (!(wp->pvname = strdup(pvname)))
+        {
+            wp->rc = EZCA_FAILEDMALLOC;
+            wp->error_msg = ErrorMsgs[FAILED_MALLOC_MSG_IDX];
+
+            if (AutoErrorMessage)
+		print_error(wp);
+        } 
+	else if (!VALID_EZCA_DATA_TYPE(wp->ezcadatatype))
+	{
+	    wp->rc = EZCA_INVALIDARG;
+	    wp->error_msg = ErrorMsgs[INVALID_TYPE_MSG_IDX];
+
+	    if (AutoErrorMessage)
+		print_error(wp);
+	} 
+	else if (wp->nelem <= 0)
+	{
+	    wp->rc = EZCA_INVALIDARG;
+	    wp->error_msg = ErrorMsgs[INVALID_NELEM_MSG_IDX];
+
+	    if (AutoErrorMessage)
+		print_error(wp);
+	}
+	else if (!(wp->pval))
+	{
+	    wp->rc = EZCA_INVALIDARG;
+	    wp->error_msg = ErrorMsgs[INVALID_PBUFF_MSG_IDX];
+
+	    if (AutoErrorMessage)
+		print_error(wp);
+	}
+	else
+	{
+	    /* arguments are valid */
+	    wp->rc = EZCA_OK;
+	} /* endif */
+
+	if (InGroup)
+	    append_to_work_list(wp);
+	else if (wp->rc == EZCA_OK)
+	{
+	    /* all input args OK */
+	    get_channel(wp, &cp);
+
+	    if (cp)
+	    {
+		/* everything OK so far ... otherwise something */
+		/* went wrong and it is already explained in wp */
+
+		if (EzcaConnected(cp))
+		{
+		    /* channel is currently connected */
+
+		    if (wp->nelem <= EzcaElementCount(cp))
+			EzcaArrayPut(wp, cp);
+		    else
+		    {
+			/* too many elements requested */
+			wp->rc = EZCA_INVALIDARG;
+			wp->error_msg = ErrorMsgs[TOO_MANY_NELEM_MSG_IDX];
+
+			if (AutoErrorMessage)
+			    print_error(wp);
+		    } /* endif */
+		}
+		else
+		{
+		    /* channel is not connected */
+
+		    wp->rc = EZCA_NOTCONNECTED;
+		    wp->error_msg  = ErrorMsgs[NOT_CONNECTED_MSG_IDX];
+
+		    if (AutoErrorMessage)
+			print_error(wp);
+		} /* endif */
+	    } /* endif */
+
+	    /* no matter what happened ... */
+	    /* freeing malloc'd memory */
+	    if (wp->pval)
+	    {
+		free((char *) wp->pval);
+		wp->pval = (void *) NULL;
+	    } /* endif */
+	} /* endif */
+
+	rc = wp->rc;
+	    
+    }
+    else
+    {
+	rc = EZCA_FAILEDMALLOC;
+
+	if (AutoErrorMessage)
+	    printf("%s\n", FAILED_MALLOC_MSG);
+    } /* endif */
+
+    return rc;
+
+} /* end ezcaPutOldCa() */
 
 /*******************/
 /*                 */
@@ -3574,7 +3971,7 @@ unsigned char hi;
 BOOL found;
 struct channel *rc;
 
-    if (valid_pvname(pvname))
+    if (pvname)
     {
 	hi = hash(pvname);
 
@@ -3635,7 +4032,7 @@ BOOL done;
 	print_state();
     } /* endif */
 
-    if (valid_pvname(wp->pvname))
+    if (wp->pvname)
     {
 	if (*cpp = find_channel(wp->pvname))
 	{
@@ -3650,90 +4047,62 @@ printf("get_channel(): could not find_channel(). must ca_search_and_connect() an
 
 	    if (*cpp = pop_channel())
 	    {
-		if (EzcaQueueSearchAndConnect(wp, *cpp) == ECA_NORMAL)
+		if ((*cpp)->pvname = strdup(wp->pvname))
 		{
-		    for (done = FALSE, attempts = 0; 
-			!done && attempts <= RetryCount; attempts ++)
+		    if (EzcaQueueSearchAndConnect(wp, *cpp) == ECA_NORMAL)
 		    {
-			if (Trace || Debug)
-			    printf("get_channel(): attempt %d of %d\n", 
-				attempts+1, RetryCount+1);
-
-			if (EzcaPendEvent(wp, TimeoutSeconds) == ECA_TIMEOUT)
-			    done = EzcaConnected(*cpp);
-			else
-			{
-			    /* something went wrong ... rc and */
-			    /* error msg have already been set */
-
-			    /* need to trash this wp so it's */
-			    /* never used again in case the  */
-			    /* callback fires off later      */
-
-			    done = TRUE;
-
-			    clean_and_push_channel(*cpp);
-			    *cpp = (struct channel *) NULL;
-
-			    wp->trashme = TRUE;
-
-			    if (Debug)
-				printf("trashing wp %x\n", wp);
-			} /* endif */
-		    } /* endfor */
-
-		    if (EzcaConnected(*cpp))
-		    {
-			strncpy((*cpp)->pvname, wp->pvname, sizeof(wp->pvname));
-			(*cpp)->pvname[sizeof(wp->pvname)-1] = '\0';;
-
+			/* adding to Channels */
 			hi = hash((*cpp)->pvname);
 			(*cpp)->next = Channels[hi];
 			Channels[hi] = *cpp;
+
+			for (done = FALSE, attempts = 0; 
+			    !done && attempts <= RetryCount; attempts ++)
+			{
+			    if (Trace || Debug)
+				printf("get_channel(): attempt %d of %d\n", 
+				    attempts+1, RetryCount+1);
+
+			    if (EzcaPendEvent(wp,TimeoutSeconds) == ECA_TIMEOUT)
+				done = EzcaConnected(*cpp);
+			} /* endfor */
 		    }
 		    else
 		    {
-			/* could not find pvar */
+			/* something went wrong ... rc and */
+			/* error msg have already been set */
 
 			clean_and_push_channel(*cpp);
 			*cpp = (struct channel *) NULL;
-
-			wp->rc = EZCA_NOTIMELYRESPONSE;
-			sprintf(wp->error_msg, "%s : %s", 
-			    NO_PVAR_FOUND_MSG, wp->pvname);
-
-			if (AutoErrorMessage)
-			    printf("%s\n", wp->error_msg);
-
 		    } /* endif */
 		}
 		else
 		{
-		    /* something went wrong ... rc and */
-		    /* error msg have already been set */
+		    wp->rc = EZCA_FAILEDMALLOC;
+		    wp->error_msg = ErrorMsgs[FAILED_MALLOC_MSG_IDX];
 
-		    clean_and_push_channel(*cpp);
-		    *cpp = (struct channel *) NULL;
+		    if (AutoErrorMessage)
+			print_error(wp);
 		} /* endif */
 	    } 
 	    else
 	    {
 		wp->rc = EZCA_FAILEDMALLOC;
-		strcpy(wp->error_msg, FAILED_MALLOC_MSG);
+		wp->error_msg = ErrorMsgs[FAILED_MALLOC_MSG_IDX];
 
 		if (AutoErrorMessage)
-		    printf("%s\n", wp->error_msg);
+		    print_error(wp);
 	    } /* endif */
 	} /* endif */
     }
     else
     {
 	*cpp = (struct channel *) NULL;
-	wp->rc = EZCA_INVALIDPVNAME;
-	strcpy(wp->error_msg, INVALID_PVNAME_MSG);
+	wp->rc = EZCA_INVALIDARG;
+	wp->error_msg = ErrorMsgs[INVALID_PVNAME_MSG_IDX];
 
 	if (AutoErrorMessage)
-	    printf("%s\n", wp->error_msg);
+	    print_error(wp);
     } /* endif */
 
     if (Debug)
@@ -3874,10 +4243,10 @@ BOOL rc;
 		    found_error = TRUE;
 
 		    wp->rc = EZCA_INVALIDARG;
-		    strcpy(wp->error_msg, TOO_MANY_NELEM_MSG);
+		    wp->error_msg = ErrorMsgs[TOO_MANY_NELEM_MSG_IDX];
 
 		    if (AutoErrorMessage)
-			printf("%s\n", wp->error_msg);
+			print_error(wp);
 		} /* endif */
 	    } /* endif */
 
@@ -4102,10 +4471,10 @@ BOOL rc;
 		rc = FALSE;
 
 		wp->rc = EZCA_INVALIDARG;
-		strcpy(wp->error_msg, TOO_MANY_NELEM_MSG);
+		wp->error_msg = ErrorMsgs[TOO_MANY_NELEM_MSG_IDX];
 
 		if (AutoErrorMessage)
-		    printf("%s\n", wp->error_msg);
+		    print_error(wp);
 	    } /* endif */
 	} 
 	else
@@ -4174,10 +4543,10 @@ int attempts;
 	    /* callback fires off later      */
 
 	    wp->rc = EZCA_NOTIMELYRESPONSE;
-	    strcpy(wp->error_msg, NO_RESPONSE_IN_TIME_MSG);
+	    wp->error_msg = ErrorMsgs[NO_RESPONSE_IN_TIME_MSG_IDX];
 
 	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
+		print_error(wp);
 	    wp->trashme = TRUE;
 
 	    if (Debug)
@@ -4191,6 +4560,33 @@ int attempts;
     } /* endif */
 
 } /* end issue_wait() */
+
+/****************************************************************
+*
+*
+****************************************************************/
+
+static void print_error(struct work *wp)
+{
+
+    if (wp)
+    {
+	if (wp->rc == EZCA_OK)
+	    printf("%s\n", OKMSG);
+	else
+	{
+	    if (wp->error_msg || wp->aux_error_msg)
+	    {
+		if (wp->error_msg)
+		    printf("%s", wp->error_msg);
+		if (wp->aux_error_msg)
+		    printf(" : %s", wp->aux_error_msg);
+		printf("\n");
+	    } /* endif */
+	} /* endif */
+    } /* endif */
+
+} /* end print_error() */
 
 /****************************************************************
 *
@@ -4217,20 +4613,8 @@ int rc;
 
 	    rc = EzcaPendEvent((struct work *) NULL, SHORT_TIME);
 
-	    switch (rc)
-	    {
-		case ECA_TIMEOUT: break; /* normal return code */
-		case ECA_NORMAL:
-		    fprintf(stderr, "%s: %s", PROLOGUE_MSG, ECA_NORMAL_MSG);
-		    break;
-		case ECA_EVDISALLOW:
-		    fprintf(stderr, "%s", PROLOGUE_MSG, ECA_EVDISALLOW_MSG);
-		    break;
-		default:
-		    fprintf(stderr, "%s: %s %d", 
-			PROLOGUE_MSG, UNKNOWN_RC_MSG, rc);
-		    break;
-	    } /* end switch() */
+	    if (rc != ECA_TIMEOUT)
+		fprintf(stderr, "%s: %s", PROLOGUE_MSG, ca_message(rc));
 	} /* endif */
     } /* endif */
 
@@ -4242,42 +4626,6 @@ int rc;
     } /* endif */
 
 } /* end prologue() */
-
-/****************************************************************
-*
-*
-****************************************************************/
-
-static BOOL valid_pvname(char *pvname)
-{
-
-char *cp;
-BOOL rc;
-
-    if (pvname)
-	if (*pvname)
-	    if (cp = index(pvname, '.'))
-		/* found a '.' ... checking for another one */
-		if (index(cp+1, '.'))
-		    /* found another one */
-		    rc = FALSE;
-		else
-		    /* was only one */
-		    rc = (((cp-pvname) < PVNAME_SZ) 
-			    && (strlen(cp+1) < FLDNAME_SZ));
-	    else
-		/* no '.' ... record name only */
-		rc = (strlen(pvname) < PVNAME_SZ);
-	else
-	    /* empty string */
-	    rc = FALSE;
-    else
-	/* NULL pointer */
-	rc = FALSE;
-
-    return rc;
-
-} /* end valid_pvname() */
 
 /**************************************/
 /*                                    */
@@ -4336,51 +4684,16 @@ int rc;
 	    my_monitor_callback, (void *) mp, (float) 0, (float) 0, (float) 0, 
 	    &(mp->evd));
 
-    switch (rc)
+    if (rc != ECA_NORMAL)
     {
-	case ECA_NORMAL: break;
-	case ECA_BADTYPE: 
-	    wp->rc = EZCA_CAFAILURE;
+	wp->rc = EZCA_CAFAILURE;
 
-	    sprintf(wp->error_msg, "%s: %s", 
-		CAADDARRAYEVENT_MSG, ECA_BADTYPE_MSG);
+	wp->error_msg = ErrorMsgs[CAADDARRAYEVENT_MSG_IDX];
+	wp->aux_error_msg = strdup(ca_message(rc));
 
-	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
-	    break;
-	case ECA_STRTOBIG: 
-	    wp->rc = EZCA_CAFAILURE;
-	    sprintf(wp->error_msg, "%s: %s", 
-		CAADDARRAYEVENT_MSG, ECA_STRTOBIG_MSG);
-
-	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
-	    break;
-	case ECA_ALLOCMEM: 
-	    wp->rc = EZCA_CAFAILURE;
-	    sprintf(wp->error_msg, "%s: %s", 
-		CAADDARRAYEVENT_MSG, ECA_ALLOCMEM_MSG);
-
-	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
-	    break;
-	case ECA_GETFAIL: 
-	    wp->rc = EZCA_CAFAILURE;
-	    sprintf(wp->error_msg, "%s: %s", 
-		CAADDARRAYEVENT_MSG, ECA_GETFAIL_MSG);
-
-	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
-	    break;
-	default:
-	    wp->rc = EZCA_CAFAILURE;
-	    sprintf(wp->error_msg, "%s: %s %d", 
-		CAADDARRAYEVENT_MSG, UNKNOWN_RC_MSG, rc);
-
-	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
-	    break;
-    } /* end switch() */
+	if (AutoErrorMessage)
+	    print_error(wp);
+    } /* endif */
 
     return rc;
 
@@ -4393,11 +4706,14 @@ int rc;
 * the worst that could happen is that the channels are
 * not cleared.
 *
+* Channel access will segmentation fault if you attempt to ca_clear_channel()
+* that has never had a search done on it.
+*
 ****************************************************************/
 
 static void EzcaClearChannel(struct channel *cp)
 {
-    if (cp)
+    if (cp && cp->ever_successfully_searched)
 	ca_clear_channel(cp->cid);
 
 } /* end EzcaClearChannel() */
@@ -4429,7 +4745,7 @@ static BOOL EzcaConnected(struct channel *cp)
 BOOL rc;
 
     if (cp)
-	rc = (ca_state(cp->cid) == cs_conn);
+	rc = (cp->ever_successfully_searched && ca_state(cp->cid) == cs_conn);
     else
     {
 	fprintf(stderr, "EZCA WARNING: EzcaConnected() rcvd NULL cp\n");
@@ -4525,11 +4841,11 @@ int rc;
 	else
 	{
 	    rc = wp->rc = EZCA_CAFAILURE;
-	    sprintf(wp->error_msg, "%s: %s", 
-		CAARRAYGETCALL_MSG, ECA_BADCHID_MSG);
+	    wp->error_msg = ErrorMsgs[CAARRAYGETCALL_MSG_IDX];
+	    wp->aux_error_msg = strdup(ECA_BADCHID_MSG);
 
 	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
+		print_error(wp);
 	} /* endif */
     }
     else if (wp->worktype == GETUNITS || wp->worktype == GETGRAPHICLIMITS 
@@ -4547,11 +4863,11 @@ int rc;
 
 		    rc = wp->rc = EZCA_UDFREQ;
 
-		    sprintf(wp->error_msg, "%s: %s", 
-			CAARRAYGETCALL_MSG, UDFREQ_MSG);
+		    wp->error_msg = ErrorMsgs[CAARRAYGETCALL_MSG_IDX];
+		    wp->aux_error_msg = strdup(UDFREQ_MSG);
 
 		    if (AutoErrorMessage)
-			printf("%s\n", wp->error_msg);
+			print_error(wp);
 		    break;
 		/* case DBF_INT = DBF_SHORT:  */
 		case DBF_SHORT:
@@ -4561,12 +4877,11 @@ int rc;
 		    {
 			/* precision undefined */
 			rc = wp->rc = EZCA_UDFREQ;
-
-			sprintf(wp->error_msg, "%s: %s", 
-			    CAARRAYGETCALL_MSG, UDFREQ_MSG);
+			wp->error_msg = ErrorMsgs[CAARRAYGETCALL_MSG_IDX];
+			wp->aux_error_msg = strdup(UDFREQ_MSG);
 
 			if (AutoErrorMessage)
-			    printf("%s\n", wp->error_msg);
+			    print_error(wp);
 		    } /* endif */
 		    break;
 		case DBF_FLOAT:
@@ -4579,12 +4894,11 @@ int rc;
 		    {
 			/* precision undefined */
 			rc = wp->rc = EZCA_UDFREQ;
-
-			sprintf(wp->error_msg, "%s: %s", 
-			    CAARRAYGETCALL_MSG, UDFREQ_MSG);
+			wp->error_msg = ErrorMsgs[CAARRAYGETCALL_MSG_IDX];
+			wp->aux_error_msg = strdup(UDFREQ_MSG);
 
 			if (AutoErrorMessage)
-			    printf("%s\n", wp->error_msg);
+			    print_error(wp);
 		    } /* endif */
 		    break;
 		case DBF_LONG:
@@ -4594,12 +4908,11 @@ int rc;
 		    {
 			/* precision undefined */
 			rc = wp->rc = EZCA_UDFREQ;
-
-			sprintf(wp->error_msg, "%s: %s", 
-			    CAARRAYGETCALL_MSG, UDFREQ_MSG);
+			wp->error_msg = ErrorMsgs[CAARRAYGETCALL_MSG_IDX];
+			wp->aux_error_msg = strdup(UDFREQ_MSG);
 
 			if (AutoErrorMessage)
-			    printf("%s\n", wp->error_msg);
+			    print_error(wp);
 		    } /* endif */
 		    break;
 		case DBF_DOUBLE:
@@ -4616,11 +4929,11 @@ int rc;
 	else
 	{
 	    rc = wp->rc = EZCA_CAFAILURE;
-	    sprintf(wp->error_msg, "%s: %s", 
-		CAARRAYGETCALL_MSG, ECA_BADCHID_MSG);
+	    wp->error_msg = ErrorMsgs[CAARRAYGETCALL_MSG_IDX];
+	    wp->aux_error_msg = strdup(ECA_BADCHID_MSG);
 
 	    if (AutoErrorMessage)
-		    printf("%s\n", wp->error_msg);
+		print_error(wp);
 	} /* endif */
     }
     else
@@ -4645,58 +4958,15 @@ int rc;
 	rc = ca_array_get_callback(wp->dbr_type, (unsigned long) wp->nelem,
 		    cp->cid, my_get_callback, (void *) wp);
 
-	switch (rc)
+	if (rc != ECA_NORMAL)
 	{
-	    case ECA_NORMAL: break;
-	    case ECA_BADCHID: 
-		wp->rc = EZCA_CAFAILURE;
-		sprintf(wp->error_msg, "%s: %s", 
-		    CAARRAYGETCALL_MSG, ECA_BADCHID_MSG);
+	    wp->rc = EZCA_CAFAILURE;
+	    wp->error_msg = ErrorMsgs[CAARRAYGETCALL_MSG_IDX];
+	    wp->aux_error_msg = strdup(ca_message(rc));
 
-		if (AutoErrorMessage)
-		    printf("%s\n", wp->error_msg);
-		break;
-	    case ECA_BADCOUNT: 
-		wp->rc = EZCA_CAFAILURE;
-		sprintf(wp->error_msg, "%s: %s", 
-		    CAARRAYGETCALL_MSG, ECA_BADCOUNT_MSG);
-
-		if (AutoErrorMessage)
-		    printf("%s\n", wp->error_msg);
-		break;
-	    case ECA_BADTYPE:
-		wp->rc = EZCA_CAFAILURE;
-		sprintf(wp->error_msg, "%s: %s", 
-		    CAARRAYGETCALL_MSG, ECA_BADTYPE_MSG);
-
-		if (AutoErrorMessage)
-		    printf("%s\n", wp->error_msg);
-		break;
-	    case ECA_GETFAIL: 
-		wp->rc = EZCA_CAFAILURE;
-		sprintf(wp->error_msg, "%s: %s", 
-		    CAARRAYGETCALL_MSG, ECA_GETFAIL_MSG);
-
-		if (AutoErrorMessage)
-		    printf("%s\n", wp->error_msg);
-		break;
-	    case ECA_ALLOCMEM: 
-		wp->rc = EZCA_CAFAILURE;
-		sprintf(wp->error_msg, "%s: %s", 
-		    CAARRAYGETCALL_MSG, ECA_ALLOCMEM_MSG);
-
-		if (AutoErrorMessage)
-		    printf("%s\n", wp->error_msg);
-		break;
-	    default:
-		wp->rc = EZCA_CAFAILURE;
-		sprintf(wp->error_msg, "%s: %s %d", 
-		    CAARRAYGETCALL_MSG, UNKNOWN_RC_MSG, rc);
-
-		if (AutoErrorMessage)
-		    printf("%s\n", wp->error_msg);
-		break;
-	} /* end switch() */
+	    if (AutoErrorMessage)
+		print_error(wp);
+	} /* endif */
     } /* endif */
 
     return rc;
@@ -4753,65 +5023,82 @@ printf("ca_array_put_callback(ezcatype (%d)->dbrtype (%d), nelem %d, >%s<, wp->p
     rc = ca_array_put_callback(wp->dbr_type, (unsigned long) wp->nelem,
 		cp->cid, wp->pval, my_put_callback, (void *) wp);
 
-    switch (rc)
+    if (rc != ECA_NORMAL)
     {
-	case ECA_NORMAL: break;
-	case ECA_BADCHID: 
-	    wp->rc = EZCA_CAFAILURE;
-	    sprintf(wp->error_msg, "%s: %s", 
-		CAARRAYPUTCALL_MSG, ECA_BADCHID_MSG);
+	wp->rc = EZCA_CAFAILURE;
+	wp->error_msg = ErrorMsgs[CAARRAYPUTCALL_MSG_IDX];
+	wp->aux_error_msg = strdup(ca_message(rc));
 
-	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
-	    break;
-	case ECA_BADCOUNT: 
-	    wp->rc = EZCA_CAFAILURE;
-	    sprintf(wp->error_msg, "%s: %s", 
-		CAARRAYPUTCALL_MSG, ECA_BADCOUNT_MSG);
-
-	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
-	    break;
-	case ECA_BADTYPE:
-	    wp->rc = EZCA_CAFAILURE;
-	    sprintf(wp->error_msg, "%s: %s", 
-		CAARRAYPUTCALL_MSG, ECA_BADTYPE_MSG);
-
-	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
-	    break;
-	case ECA_ALLOCMEM: 
-	    wp->rc = EZCA_CAFAILURE;
-	    sprintf(wp->error_msg, "%s: %s", 
-		CAARRAYPUTCALL_MSG, ECA_ALLOCMEM_MSG);
-
-	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
-	    break;
-	/* included here even though not in CA manual */
-	/* I have actually gotten this rc from this   */
-	/* CA call.                                   */
-	case ECA_NOSUPPORT: 
-	    wp->rc = EZCA_CAFAILURE;
-	    sprintf(wp->error_msg, "%s: %s", 
-		CAARRAYPUTCALL_MSG, ECA_NOSUPPORT_MSG);
-
-	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
-	    break;
-	default:
-	    wp->rc = EZCA_CAFAILURE;
-	    sprintf(wp->error_msg, "%s: %s %d", 
-		CAARRAYPUTCALL_MSG, UNKNOWN_RC_MSG, rc);
-
-	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
-	    break;
-    } /* end switch() */
+	if (AutoErrorMessage)
+	    print_error(wp);
+    } /* endif */
 
     return rc;
 
 } /* end EzcaArrayPutCallback() */
+
+/****************************************************************
+*
+* if evertything goes ok, then wp is unchanged.
+*
+* if something went wrong, wp->rc = EZCA_CAFAILURE
+* and wp->error_msg is set.
+*
+****************************************************************/
+
+static int EzcaArrayPut(struct work *wp, struct channel *cp)
+{
+
+int rc;
+
+    if (!wp || !cp)
+    {
+	fprintf(stderr, 
+	    "EZCA FATAL ERROR: EzcaArrayPut() got wp %x cp %x\n", wp, cp);
+	exit(1);
+    } /* endif */
+
+    switch (wp->ezcadatatype)
+    {
+	case ezcaByte:   wp->dbr_type = DBR_CHAR;   break;
+	case ezcaString: wp->dbr_type = DBR_STRING; break;
+	case ezcaShort:  wp->dbr_type = DBR_SHORT;  break;
+	case ezcaLong:   wp->dbr_type = DBR_LONG;   break;
+	case ezcaFloat:  wp->dbr_type = DBR_FLOAT;  break;
+	case ezcaDouble: wp->dbr_type = DBR_DOUBLE; break;
+	default: 
+	    fprintf(stderr, 
+    "EZCA FATAL ERROR: EzcaArrayPut() got unrecognizable ezca data type %d\n", 
+		wp->ezcadatatype);
+	    exit(1);
+	    break;
+    } /* end switch() */
+
+    if (Trace || Debug)
+    {
+printf("ca_array_put(ezcatype (%d)->dbrtype (%d), nelem %d, >%s<, wp->pval %x)\n", 
+	    wp->ezcadatatype, wp->dbr_type, wp->nelem, wp->pvname, wp->pval); 
+
+	if (Debug)
+	    print_state();
+    } /* endif */
+
+    rc = ca_array_put(wp->dbr_type, (unsigned long) wp->nelem,
+	    cp->cid, wp->pval);
+
+    if (rc != ECA_NORMAL)
+    {
+	wp->rc = EZCA_CAFAILURE;
+	wp->error_msg = ErrorMsgs[CAARRAYPUT_MSG_IDX];
+	wp->aux_error_msg = strdup(ca_message(rc));
+
+	if (AutoErrorMessage)
+	    print_error(wp);
+    } /* endif */
+
+    return rc;
+
+} /* end EzcaArrayPut() */
 
 /****************************************************************
 *
@@ -4874,7 +5161,8 @@ int rc;
 /****************************************************************
 *
 * if not passed a struct work *wp then called in prologue just
-* to give CA an opportunity to do what it needs to do ... not
+* to give CA an opportunity to do what it needs to do or called
+* in ezcaEndGroup for group waits ... in either case, not
 * associated with any single piece of work ... just done any
 * time a EZCA call made. Hence there is no place to put any error message.
 *
@@ -4898,34 +5186,15 @@ int rc;
 
     if (wp)
     {
-	switch (rc)
+	if (rc != ECA_TIMEOUT)
 	{
-	    case ECA_TIMEOUT: break; /* normal return code */
-	    case ECA_NORMAL:
-		wp->rc = EZCA_CAFAILURE;
-		sprintf(wp->error_msg, "%s: %s", 
-		    CAPENDEVENT_MSG, ECA_NORMAL_MSG);
+	    wp->rc = EZCA_CAFAILURE;
+	    wp->error_msg = ErrorMsgs[CAPENDEVENT_MSG_IDX];
+	    wp->aux_error_msg = strdup(ca_message(rc));
 
-		if (AutoErrorMessage)
-		    printf("%s\n", wp->error_msg);
-		break;
-	    case ECA_EVDISALLOW:
-		wp->rc = EZCA_CAFAILURE;
-		sprintf(wp->error_msg, "%s: %s", 
-		    CAPENDEVENT_MSG, ECA_EVDISALLOW_MSG);
-
-		if (AutoErrorMessage)
-		    printf("%s\n", wp->error_msg);
-		break;
-	    default:
-		wp->rc = EZCA_CAFAILURE;
-		sprintf(wp->error_msg, "%s: %s %d", 
-		    CAPENDEVENT_MSG, UNKNOWN_RC_MSG, rc);
-
-		if (AutoErrorMessage)
-		    printf("%s\n", wp->error_msg);
-		break;
-	} /* end switch() */
+	    if (AutoErrorMessage)
+		print_error(wp);
+	} /* endif */
     } /* endif */
 
     return rc;
@@ -4960,34 +5229,15 @@ int rc;
 
     if (wp)
     {
-	switch (rc)
+	if (rc != ECA_NORMAL)
 	{
-	    case ECA_NORMAL: break;
-	    case ECA_EVDISALLOW: 
-		wp->rc = EZCA_CAFAILURE;
-		sprintf(wp->error_msg, "%s: %s", 
-		    CAPENDIO_MSG, ECA_EVDISALLOW_MSG);
+	    wp->rc = EZCA_CAFAILURE;
+	    wp->error_msg = ErrorMsgs[CAPENDIO_MSG_IDX];
+	    wp->aux_error_msg = strdup(ca_message(rc));
 
-		if (AutoErrorMessage)
-		    printf("%s\n", wp->error_msg);
-		break;
-	    case ECA_TIMEOUT:
-		wp->rc = EZCA_CAFAILURE;
-		sprintf(wp->error_msg, "%s: %s", 
-		    CAPENDIO_MSG, ECA_TIMEOUT_MSG);
-
-		if (AutoErrorMessage)
-		    printf("%s\n", wp->error_msg);
-		break;
-	    default:
-		wp->rc = EZCA_CAFAILURE;
-		sprintf(wp->error_msg, "%s: %s %d", 
-		    CAPENDIO_MSG, UNKNOWN_RC_MSG, rc);
-
-		if (AutoErrorMessage)
-		    printf("%s\n", wp->error_msg);
-		break;
-	} /* end switch() */
+	    if (AutoErrorMessage)
+		print_error(wp);
+	} /* endif */
     } /* endif */
 
     return rc;
@@ -5021,50 +5271,17 @@ int rc;
     rc = ca_search_and_connect(wp->pvname, &(cp->cid), 
 	    my_connection_callback, (void *) NULL);
 
-    switch (rc)
+    if (rc == ECA_NORMAL)
+	cp->ever_successfully_searched = TRUE;
+    else
     {
-	case ECA_NORMAL: break;
-	case ECA_BADTYPE: 
-	    wp->rc = EZCA_CAFAILURE;
-	    sprintf(wp->error_msg, "%s: %s", 
-		CASEARCHANDCONNECT_MSG, ECA_BADTYPE_MSG);
+	wp->rc = EZCA_CAFAILURE;
+	wp->error_msg = ErrorMsgs[CASEARCHANDCONNECT_MSG_IDX];
+	wp->aux_error_msg = strdup(ca_message(rc));
 
-	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
-	    break;
-	case ECA_STRTOBIG: 
-	    wp->rc = EZCA_CAFAILURE;
-	    sprintf(wp->error_msg, "%s: %s", 
-		CASEARCHANDCONNECT_MSG, ECA_STRTOBIG_MSG);
-
-	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
-	    break;
-	case ECA_ALLOCMEM: 
-	    wp->rc = EZCA_CAFAILURE;
-	    sprintf(wp->error_msg, "%s: %s", 
-		CASEARCHANDCONNECT_MSG, ECA_ALLOCMEM_MSG);
-
-	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
-	    break;
-	case ECA_GETFAIL: 
-	    wp->rc = EZCA_CAFAILURE;
-	    sprintf(wp->error_msg, "%s: %s", 
-		CASEARCHANDCONNECT_MSG, ECA_GETFAIL_MSG);
-
-	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
-	    break;
-	default:
-	    wp->rc = EZCA_CAFAILURE;
-	    sprintf(wp->error_msg, "%s: %s %d", 
-		CASEARCHANDCONNECT_MSG, UNKNOWN_RC_MSG, rc);
-
-	    if (AutoErrorMessage)
-		printf("%s\n", wp->error_msg);
-	    break;
-    } /* end switch() */
+	if (AutoErrorMessage)
+	    print_error(wp);
+    } /* endif */
 
     return rc;
 
@@ -6094,11 +6311,8 @@ int nbytes;
 			arg.status);
 
 		wp->rc = EZCA_CAFAILURE;
-
-		strncpy(wp->error_msg, ca_message(arg.status), 
-		    sizeof(wp->error_msg)-1);
-		wp->error_msg[sizeof(wp->error_msg)-1] = '\0';
-
+		wp->error_msg = ErrorMsgs[CAARRAYGETCALLBACK_MSG_IDX];
+		wp->aux_error_msg = strdup(ca_message(arg.status));
 	    } /* endif */
 
 	    if (Trace || Debug)
@@ -6186,21 +6400,22 @@ int nbytes;
 			if (mp->pval)
 			{
 			    if (Trace || Debug)
-			    printf("my_monitor_callback() freeing mp->pval %x\n",
+			printf("my_monitor_callback() freeing mp->pval %x\n",
 				    mp->pval);
 			    free((char *) mp->pval);
+			    mp->pval = (void *) NULL;
 			} /* endif */
 
 			if (!(mp->pval = (void *) malloc((unsigned) nbytes)))
 			{
 			    fprintf(stderr, 
-	    "EZCA FATAL ERROR: my_monitor_callback() could not allocate %d bytes\n",
+	"EZCA FATAL ERROR: my_monitor_callback() could not allocate %d bytes\n",
 				nbytes);
 			    exit(1);
 			} /* endif */
 
 			if (Trace || Debug)
-		    printf("my_monitor_callback() allocated %d bytes mp->pval %x\n",
+		printf("my_monitor_callback() allocated %d bytes mp->pval %x\n",
 				nbytes, mp->pval);
 
 			mp->last_nelem = arg.count;
@@ -6211,7 +6426,7 @@ int nbytes;
 		    {
 			case DBR_TIME_CHAR:
 			    memcpy((char *) (mp->pval), 
-			    (char *) &(((struct dbr_time_char *) arg.dbr)->value),
+			(char *) &(((struct dbr_time_char *) arg.dbr)->value),
 				nbytes);
 			    mp->status = 
 				((struct dbr_time_char *) arg.dbr)->status;
@@ -6222,7 +6437,7 @@ int nbytes;
 			    break;
 			case DBR_TIME_STRING:
 			    memcpy((char *) (mp->pval), 
-			    (char *) &(((struct dbr_time_string *)arg.dbr)->value),
+			(char *) &(((struct dbr_time_string *)arg.dbr)->value),
 				nbytes);
 			    mp->status = 
 				((struct dbr_time_string *) arg.dbr)->status;
@@ -6233,7 +6448,7 @@ int nbytes;
 			    break;
 			case DBR_TIME_SHORT:
 			    memcpy((char *) (mp->pval), 
-			    (char *) &(((struct dbr_time_short *)arg.dbr)->value),
+			(char *) &(((struct dbr_time_short *)arg.dbr)->value),
 				nbytes);
 			    mp->status = 
 				((struct dbr_time_short *) arg.dbr)->status;
@@ -6244,7 +6459,7 @@ int nbytes;
 			    break;
 			case DBR_TIME_LONG:
 			    memcpy((char *) (mp->pval), 
-			    (char *) &(((struct dbr_time_long *) arg.dbr)->value),
+			(char *) &(((struct dbr_time_long *) arg.dbr)->value),
 				nbytes);
 			    mp->status = 
 				((struct dbr_time_long *) arg.dbr)->status;
@@ -6255,7 +6470,7 @@ int nbytes;
 			    break;
 			case DBR_TIME_FLOAT:
 			    memcpy((char *) (mp->pval), 
-			    (char *) &(((struct dbr_time_float *)arg.dbr)->value),
+			(char *) &(((struct dbr_time_float *)arg.dbr)->value),
 				nbytes);
 			    mp->status = 
 				((struct dbr_time_float *) arg.dbr)->status;
@@ -6266,7 +6481,7 @@ int nbytes;
 			    break;
 			case DBR_TIME_DOUBLE:
 			    memcpy((char *) (mp->pval), 
-			    (char *)&(((struct dbr_time_double *)arg.dbr)->value),
+			(char *)&(((struct dbr_time_double *)arg.dbr)->value),
 				nbytes);
 			    mp->status = 
 				((struct dbr_time_double *) arg.dbr)->status;
@@ -6277,7 +6492,7 @@ int nbytes;
 			    break;
 			default:
 			    fprintf(stderr, 
-    "EZCA FATAL ERROR: my_monitor_callback() encountered unrecognizable type %d\n",
+"EZCA FATAL ERROR: my_monitor_callback() encountered unrecognizable type %d\n",
 				arg.type);
 			    break;
 		    } /* end switch() */
@@ -6378,11 +6593,9 @@ struct work *wp;
 			arg.status);
 
 		wp->rc = EZCA_CAFAILURE;
-
-		strncpy(wp->error_msg, ca_message(arg.status), 
-		    sizeof(wp->error_msg)-1);
-		wp->error_msg[sizeof(wp->error_msg)-1] = '\0';
-
+		wp->rc = EZCA_CAFAILURE;
+		wp->error_msg = ErrorMsgs[CAARRAYPUTCALLBACK_MSG_IDX];
+		wp->aux_error_msg = strdup(ca_message(arg.status));
 	    } /* endif */
 	}
 	else
@@ -6437,7 +6650,10 @@ struct monitor *mp;
 	    mp->active = FALSE;
 
 	    if (mp->pval)
+	    {
 		free((char *) mp->pval);
+		mp->pval = (void *) NULL;
+	    } /* endif */
 
 	    EzcaClearEvent(mp);
 
@@ -6469,7 +6685,10 @@ static void clean_and_push_monitor(struct monitor *mp)
 	mp->active = FALSE;
 
 	if (mp->pval)
+	{
 	    free((char *) mp->pval);
+	    mp->pval = (void *) NULL;
+	} /* endif */
 
 	EzcaClearEvent(mp);
 	EzcaPendIO((struct work *) NULL, SHORT_TIME);
@@ -6515,11 +6734,13 @@ int i;
             for (rc = Channel_avail_hdr, i=0; i < (NODESPERMAL-1); i ++)
             {
                 rc->next = rc + 1;
+		rc->pvname = (char *) NULL;
 		if (Debug)
 		    printf("i = %d rc %x rc->next %x\n", i, rc, rc->next);
                 rc++;
             } /* endfor */
             rc->next = (struct channel *) NULL;
+	    rc->pvname = (char *) NULL;
 	    if (Debug)
 		printf("i = %d rc %x rc->next %x\n", i, rc, rc->next);
             rc = Channel_avail_hdr;
@@ -6532,8 +6753,13 @@ int i;
     if (rc)
     {
 	rc->next = (struct channel *) NULL;
-	*(rc->pvname) = '\0';
+	if (rc->pvname)
+	{
+	    free(rc->pvname);
+	    rc->pvname = (char *) NULL;
+	} /* endif */
 	rc->monitor_list = (struct monitor *) NULL;
+	rc->ever_successfully_searched = FALSE;
     } /* endif */
 
     if (Debug)
@@ -6662,6 +6888,7 @@ int i;
             for (rc = Work_avail_hdr, i=0; i < (NODESPERMAL-1); i ++)
             {
                 rc->next = rc + 1;
+		rc->pvname = (char *) NULL;
 
 		if (Debug)
 		    printf("i = %d rc %x rc->next %x\n", i, rc, rc->next);
@@ -6669,6 +6896,7 @@ int i;
                 rc++;
             } /* endfor */
             rc->next = (struct work *) NULL;
+	    rc->pvname = (char *) NULL;
 
 	    if (Debug)
 		printf("i = %d rc %x rc->next %x\n", i, rc, rc->next);
@@ -6707,10 +6935,19 @@ static void init_work(struct work *wp)
 	wp->next = (struct work *) NULL;
 	wp->cp = (struct channel *) NULL;
 	wp->rc = UNDEFINED;
-	*(wp->error_msg) = '\0';
+	wp->error_msg = (char *) NULL;
+	if (wp->aux_error_msg)
+	{
+	    free(wp->aux_error_msg);
+	    wp->aux_error_msg = (char *) NULL;
+	} /* endif */
 	wp->trashme = FALSE;
 	wp->needs_work = FALSE;
-	*(wp->pvname) = '\0';
+	if (wp->pvname)
+	{
+	    free(wp->pvname);
+	    wp->pvname = (char *) NULL;
+	} /* endif */
 	wp->dbr_type = UNDEFINED;
 	wp->reported = FALSE;
 	wp->worktype = UNDEFINED;
@@ -6748,6 +6985,11 @@ static void push_channel(struct channel *p)
 
     if (p)
     {
+	if (p->pvname)
+	{
+	    free(p->pvname);
+	    p->pvname = (char *) NULL;
+	} /* endif */
 	p->next = Discarded_channels;
 	Discarded_channels = p;
     } /* endif */
@@ -6808,6 +7050,18 @@ static void push_work(struct work *p)
 
     if (p)
     {
+	if (p->pvname)
+	{
+	    free(p->pvname);
+	    p->pvname = (char *) NULL;
+	} /* endif */
+
+	if (p->aux_error_msg)
+	{
+	    free(p->aux_error_msg);
+	    p->aux_error_msg = (char *) NULL;
+	} /* endif */
+
 	if (p->trashme)
 	{
 	    p->next = Discarded_work;
