@@ -18,7 +18,9 @@
 #include <shareLib.h>
 
 #include <ezca.h> /* what all users of EZCA include */
+#if !defined(linux)
 extern char *strdup(const char *s1);
+#endif
 
 
 #define BOOL  char
