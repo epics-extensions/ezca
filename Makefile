@@ -10,5 +10,17 @@
 # $Id$
 #
 TOP = ../..
+#If epics/extensions/configure directory exists, build with it.
+#Otherwise use epics/extensions/config.
+ifeq (0, $(words $(notdir $(wildcard $(TOP)/configure))))
 include $(TOP)/config/CONFIG_EXTENSIONS
 include $(TOP)/config/RULES_ARCHS
+else
+include $(TOP)/configure/CONFIG
+INC += ezca.h
+LIBRARY = ezca
+ezca_SRCS = ezca.c
+ezca_LIBS += ca Com
+
+include $(TOP)/configure/RULES
+endif
