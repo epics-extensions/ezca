@@ -3,7 +3,10 @@
 #
 #
 # $Log$
-# Revision 1.4  1995/02/28 22:59:48  jba
+# Revision 1.5  1995/04/03 15:03:30  jba
+# Now installs sharable lib into lib not bin
+#
+# Revision 1.4  1995/02/28  22:59:48  jba
 # Changed TARGETS to PROD to make install work.
 #
 # Revision 1.3  1995/01/06  21:45:28  jba
@@ -28,20 +31,20 @@ USR_CFLAGS = -pic
 
 SRCS.c = ../ezca.c 
 
-INC = ezca.h
-
 LIBOBJS = ezca.o
 
-LIBNAME = libezca.a 
+LIBNAME = libezca.a
 
-PROD = $(INSTALL_LIB)/libezca.so.1.0 
+SHRLIBNAME = libezca.so.1.0
 
 include $(EPICS)/config/RULES.Unix
 
-libezca.so.1.0:
-	ld -o libezca.so.1.0 -assert pure-text ezca.o
+$(SHRLIBNAME): $(LIBOBJS)
+	ld -assert pure-text -o $@ $(LIBOBJS)
 
-$(INSTALL_LIB)/libezca.so.1.0: libezca.so.1.0
+install: $(INSTALL_LIB)/$(SHRLIBNAME)
+
+$(INSTALL_LIB)/$(SHRLIBNAME): $(SHRLIBNAME)
 	@echo "Installing library $@"
 	@test -d $(INSTALL_LOCATION_LIB) || mkdir $(INSTALL_LOCATION_LIB)
 	@test -d $(INSTALL_LIB) || mkdir $(INSTALL_LIB)
