@@ -3,7 +3,10 @@
 #
 #
 # $Log$
-# Revision 1.6  1995/04/11 20:06:21  jba
+# Revision 1.7  1995/10/04 21:44:42  jba
+# Portability changes.
+#
+# Revision 1.6  1995/04/11  20:06:21  jba
 # Added lost INC line.
 #
 # Revision 1.5  1995/04/03  15:03:30  jba
@@ -30,9 +33,20 @@ EPICS = ../../../..
 include Target.include
 include $(EPICS)/config/CONFIG_EXTENSIONS
 
-USR_CFLAGS = -pic
-
 SRCS.c = ../ezca.c 
+
+ifeq ($(T_A),sgi)
+USR_CFLAGS =  -KPIC
+USR_LDFLAGS = -shared
+endif
+ifeq ($(T_A),solaris)
+USR_CFLAGS = -Kpic
+USR_LDFLAGS = -G
+endif
+ifeq ($(T_A),sun4)
+USR_CFLAGS = -pic
+USR_LDFLAGS = -assert pure-text
+endif
 
 INC = ezca.h
 
@@ -45,7 +59,7 @@ SHRLIBNAME = libezca.so.1.0
 include $(EPICS)/config/RULES.Unix
 
 $(SHRLIBNAME): $(LIBOBJS)
-	ld -assert pure-text -o $@ $(LIBOBJS)
+	ld $(USR_LDFLAGS) -o $@ $(LIBOBJS)
 
 install: $(INSTALL_LIB)/$(SHRLIBNAME)
 
@@ -57,3 +71,5 @@ $(INSTALL_LIB)/$(SHRLIBNAME): $(SHRLIBNAME)
 
 clean::
 	$(RM) lib*
+
+
