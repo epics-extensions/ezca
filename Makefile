@@ -17,6 +17,8 @@ include $(TOP)/config/CONFIG_EXTENSIONS
 include $(TOP)/config/RULES_ARCHS
 else
 include $(TOP)/configure/CONFIG
+
+SHARED_LIBRARIES=YES
 INC += ezca.h
 LIBRARY = ezca
 ezca_SRCS = ezca.c
