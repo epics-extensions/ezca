@@ -3,7 +3,10 @@
 #
 #
 # $Log$
-# Revision 1.5  1995/04/03 15:03:30  jba
+# Revision 1.6  1995/04/11 20:06:21  jba
+# Added lost INC line.
+#
+# Revision 1.5  1995/04/03  15:03:30  jba
 # Now installs sharable lib into lib not bin
 #
 # Revision 1.4  1995/02/28  22:59:48  jba
@@ -30,6 +33,8 @@ include $(EPICS)/config/CONFIG_EXTENSIONS
 USR_CFLAGS = -pic
 
 SRCS.c = ../ezca.c 
+
+INC = ezca.h
 
 LIBOBJS = ezca.o
 
