@@ -1,0 +1,32 @@
+#	Makefile.Host
+
+TOP = ../../..
+#TOP = ../../../../base
+include $(TOP)/config/CONFIG_EXTENSIONS
+#include $(TOP)/config/CONFIG_BASE
+CMPLR = STRICT
+
+# install header file
+INC = ezca.h
+
+# build share library
+SHARED_LIBRARIES = YES
+
+#
+#	Contents of library: generic, special and for all systems
+#
+
+# on generic system
+LIBSRCS := ezca.c
+
+#       Library to build:
+#       lib$(LIBRARY).a  or   ..dll/..exp/..lib
+#
+LIBRARY := ezca
+
+# need additional libs
+PROD_LIBS := ca Com
+
+include $(TOP)/config/RULES.Host
+
+#	EOF Makefile.Host
