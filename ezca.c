@@ -4449,7 +4449,7 @@ int i;
     AutoErrorMessage = TRUE;
     InGroup = FALSE;
     TimeoutSeconds = 0.05;
-    RetryCount = 9;
+    RetryCount = 599;
 
     Debug = FALSE;
     Trace = FALSE;
