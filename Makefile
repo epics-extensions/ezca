@@ -20,7 +20,7 @@ include $(TOP)/configure/CONFIG
 
 SHARED_LIBRARIES=YES
 INC += ezca.h
-LIBRARY = ezca
+LIBRARY_HOST = ezca
 ezca_SRCS = ezca.c
 ezca_LIBS += ca Com
 
