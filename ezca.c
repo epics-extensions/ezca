@@ -7339,3 +7339,21 @@ static void print_workp()
 	printf("0\n");
 
 } /* end print_workp() */
+
+#if defined(vxWorks)
+char *strdup(const char *str)
+{
+  char *new, *ptr;
+  
+  if (! str)
+    return(0);
+  
+  new = (char *) malloc(strlen(str) + 1);
+  if (! new)
+    return(0);
+  
+  for (ptr = new; *ptr++ = *str++; ) /* empty loop body */;
+  
+  return(new);
+}
+#endif
