@@ -3,7 +3,10 @@
 #
 #
 # $Log$
-# Revision 1.1  1994/10/31 15:27:15  jba
+# Revision 1.2  1994/12/15 20:27:13  jba
+# Added INC  definition so ezca.h gets installed
+#
+# Revision 1.1  1994/10/31  15:27:15  jba
 # Initial version
 #
 #
@@ -15,6 +18,8 @@ include $(EPICS)/config/CONFIG_EXTENSIONS
 SRCS.c = ../ezca.c 
 
 LIBOBJS = ezca.o
+
+INC = ezca.h
 
 LIBNAME = libezca.a
 
