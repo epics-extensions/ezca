@@ -20,6 +20,10 @@
 #define ezcaPut ezcaPut
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Immediate Functions ... do not affect error message */
 
 epicsShareFunc int epicsShareAPI ezcaEndGroup(void);
@@ -94,3 +98,7 @@ epicsShareFunc int epicsShareAPI ezcaPutOldCa(char *pvname, char ezcatype,
 #define EZCA_NOTIMELYRESPONSE  6
 #define EZCA_INGROUP           7
 #define EZCA_NOTINGROUP        8
+
+#ifdef __cplusplus
+}
+#endif
