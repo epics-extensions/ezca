@@ -3,7 +3,10 @@
 #
 #
 # $Log$
-# Revision 1.7  1995/10/04 21:44:42  jba
+# Revision 1.8  1996/05/14 15:01:08  jba
+# Added flags for hp700 and Linux.
+#
+# Revision 1.7  1995/10/04  21:44:42  jba
 # Portability changes.
 #
 # Revision 1.6  1995/04/11  20:06:21  jba
@@ -47,6 +50,14 @@ ifeq ($(T_A),sun4)
 USR_CFLAGS = -pic
 USR_LDFLAGS = -assert pure-text
 endif
+ifeq ($(T_A),hp700)
+USR_CFLAGS = +Z
+USR_LDFLAGS = -b
+endif
+ifeq ($(T_A),Linux)
+USR_CFLAGS = -fPIC -D_BSD_SOURCE
+USR_LDFLAGS = -shared
+endif
 
 INC = ezca.h
 
@@ -71,5 +82,4 @@ $(INSTALL_LIB)/$(SHRLIBNAME): $(SHRLIBNAME)
 
 clean::
 	$(RM) lib*
-
 
