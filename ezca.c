@@ -845,7 +845,7 @@ int epicsShareAPI ezcaGetErrorString(char *prefix, char **buff)
 {
 
 struct work *wp;
-char *wtm;
+char *wtm = 0;
 char *cp;
 unsigned nbytes;
 int rc;
@@ -1354,7 +1354,7 @@ void epicsShareAPI ezcaPerror(char *prefix)
 {
 
 struct work *wp;
-char *wtm;
+char *wtm = 0;
 
     prologue();
 
@@ -4183,7 +4183,7 @@ static BOOL get_from_monitor(struct work *wp, struct channel *cp)
 
 struct monitor *mp;
 BOOL found_error;
-BOOL rc;
+BOOL rc = 0;
 
     if (wp && cp)
     {
@@ -4486,7 +4486,7 @@ int i;
 static BOOL issue_get(struct work *wp, struct channel *cp)
 {
 
-BOOL rc;
+BOOL rc = 0;
 
     if (wp && cp)
     {
@@ -5193,7 +5193,7 @@ static void EzcaInitializeChannelAccess()
 static int EzcaNativeType(struct channel *cp)
 {
 
-int rc;
+int rc = 0;
 
     if (cp)
 	rc = (int) ca_field_type(cp->cid);
@@ -7360,7 +7360,7 @@ char *strdup(const char *str)
   if (! new)
     return(0);
   
-  for (ptr = new; *ptr++ = *str++; ) /* empty loop body */;
+  for (ptr = new; (*ptr++ = *str++)!='\0' ; ) /* empty loop body */;
   
   return(new);
 }
