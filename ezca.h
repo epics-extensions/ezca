@@ -22,46 +22,54 @@
 
 /* Immediate Functions ... do not affect error message */
 
-int ezcaEndGroup();
-int ezcaEndGroupWithReport(int **rcs, int *nrcs);
-int ezcaGetErrorString(char *prefix, char **buff);
-int ezcaNewMonitorValue(char *pvname, char ezcatype); /* returns TRUE/FALSE */
-void ezcaPerror(char *prefix);
+epicsShareFunc int epicsShareAPI ezcaEndGroup();
+epicsShareFunc int epicsShareAPI ezcaEndGroupWithReport(int **rcs, int *nrcs);
+epicsShareFunc int epicsShareAPI ezcaGetErrorString(char *prefix, char **buff);
+epicsShareFunc int epicsShareAPI ezcaNewMonitorValue(char *pvname, 
+	char ezcatype); /* returns TRUE/FALSE */
+epicsShareFunc void epicsShareAPI ezcaPerror(char *prefix);
 
 /* Non-Groupable Work Functions */
 
-void ezcaAutoErrorMessageOff();
-void ezcaAutoErrorMessageOn();
-int ezcaClearMonitor(char *pvname, char ezcatype);
-void ezcaDebugOff();
-void ezcaDebugOn();
-int ezcaDelay(float sec);
-void ezcaFree(void *buff);
-int ezcaGetRetryCount();
-float ezcaGetTimeout();
-int ezcaPvToChid(char *pvname, chid **cid);
-int ezcaSetMonitor(char *pvname, char ezcatype);
-int ezcaSetRetryCount(int retry);
-int ezcaSetTimeout(float sec);
-int ezcaStartGroup();
-void ezcaTraceOff();
-void ezcaTraceOn();
+epicsShareFunc void epicsShareAPI ezcaAutoErrorMessageOff();
+epicsShareFunc void epicsShareAPI ezcaAutoErrorMessageOn();
+epicsShareFunc int epicsShareAPI ezcaClearMonitor(char *pvname, char ezcatype);
+epicsShareFunc void epicsShareAPI ezcaDebugOff();
+epicsShareFunc void epicsShareAPI ezcaDebugOn();
+epicsShareFunc int epicsShareAPI ezcaDelay(float sec);
+epicsShareFunc void epicsShareAPI ezcaFree(void *buff);
+epicsShareFunc int epicsShareAPI ezcaGetRetryCount();
+epicsShareFunc float epicsShareAPI ezcaGetTimeout();
+epicsShareFunc int epicsShareAPI ezcaPvToChid(char *pvname, chid **cid);
+epicsShareFunc int epicsShareAPI ezcaSetMonitor(char *pvname, char ezcatype);
+epicsShareFunc int epicsShareAPI ezcaSetRetryCount(int retry);
+epicsShareFunc int epicsShareAPI ezcaSetTimeout(float sec);
+epicsShareFunc int epicsShareAPI ezcaStartGroup();
+epicsShareFunc void epicsShareAPI ezcaTraceOff();
+epicsShareFunc void epicsShareAPI ezcaTraceOn();
 
 /* Groupable Work Functions */
 
-int ezcaGet(char *pvname, char ezcatype, int nelem, void *data_buff);
-int ezcaGetControlLimits(char *pvname, double *low, double *high);
-int ezcaGetGraphicLimits(char *pvname, double *low, double *high);
-int ezcaGetNelem(char *pvname, int *nelem);
-int ezcaGetPrecision(char *pvname, short *precision);
-int ezcaGetStatus(char *pvname, TS_STAMP *timestamp, 
-    short *status, short *severity);
-int ezcaGetUnits(char *pvname, char *units); /* units must be at least */
-					     /*  EZCA_UNITS_SIZE large */
-int ezcaGetWithStatus(char *pvname, char ezcatype, int nelem, void *data_buff, 
+epicsShareFunc int epicsShareAPI ezcaGet(char *pvname, char ezcatype, 
+	int nelem, void *data_buff);
+epicsShareFunc int epicsShareAPI ezcaGetControlLimits(char *pvname, 
+	double *low, double *high);
+epicsShareFunc int epicsShareAPI ezcaGetGraphicLimits(char *pvname, 
+	double *low, double *high);
+epicsShareFunc int epicsShareAPI ezcaGetNelem(char *pvname, int *nelem);
+epicsShareFunc int epicsShareAPI ezcaGetPrecision(char *pvname, 
+	short *precision);
+epicsShareFunc int epicsShareAPI ezcaGetStatus(char *pvname, 
 	TS_STAMP *timestamp, short *status, short *severity);
-int ezcaPut(char *pvname, char ezcatype, int nelem, void *data_buff);
-int ezcaPutOldCa(char *pvname, char ezcatype, int nelem, void *data_buff);
+epicsShareFunc int epicsShareAPI ezcaGetUnits(char *pvname, 
+	char *units); /* units must be at least	EZCA_UNITS_SIZE large */
+epicsShareFunc int epicsShareAPI ezcaGetWithStatus(char *pvname, 
+	char ezcatype, int nelem, void *data_buff, TS_STAMP *timestamp, 
+	short *status, short *severity);
+epicsShareFunc int epicsShareAPI ezcaPut(char *pvname, char ezcatype, 
+	int nelem, void *data_buff);
+epicsShareFunc int epicsShareAPI ezcaPutOldCa(char *pvname, char ezcatype, 
+	int nelem, void *data_buff);
 
 /* must match size of char units[] in dbr_gr_xxxx */
 /* and dbr_ctrl_xxxx structs in db_access.h       */

@@ -14,7 +14,10 @@
 #include <dbDefs.h> /* needed for PVNAME_SZ and FLDNAME_SZ */
 #include <db_access.h>
 
-#include <ezca.h> /* what all usrers of EZCA include */
+#define epicsExportSharedSymbols
+#include <shareLib.h>
+
+#include <ezca.h> /* what all users of EZCA include */
 
 #define BOOL  char
 #define FALSE 0
@@ -419,7 +422,7 @@ static void print_workp();
 *
 ****************************************************************/
 
-int ezcaEndGroup()
+int epicsShareAPI ezcaEndGroup()
 {
 
     return ezcaEndGroupWithReport((int **) NULL, (int *) NULL);
@@ -431,7 +434,7 @@ int ezcaEndGroup()
 *
 ****************************************************************/
 
-int ezcaEndGroupWithReport(int **rcs, int *nrcs)
+int epicsShareAPI ezcaEndGroupWithReport(int **rcs, int *nrcs)
 {
 
 struct work *wp;
@@ -821,7 +824,7 @@ printf("ezcaEndGroupWithReport(): did not find an active monitor with a value fo
 *
 ****************************************************************/
 
-int ezcaGetErrorString(char *prefix, char **buff)
+int epicsShareAPI ezcaGetErrorString(char *prefix, char **buff)
 {
 
 struct work *wp;
@@ -1256,7 +1259,7 @@ int rc;
 *
 ****************************************************************/
 
-int ezcaNewMonitorValue(char *pvname, char type)
+int epicsShareAPI ezcaNewMonitorValue(char *pvname, char type)
 {
 
 struct channel *cp;
@@ -1330,7 +1333,7 @@ int rc;
 *
 ****************************************************************/
 
-void ezcaPerror(char *prefix)
+void epicsShareAPI ezcaPerror(char *prefix)
 {
 
 struct work *wp;
@@ -1456,7 +1459,7 @@ char *wtm;
 *
 ****************************************************************/
 
-void ezcaAutoErrorMessageOff()
+void epicsShareAPI ezcaAutoErrorMessageOff()
 {
 
 struct work *wp;
@@ -1490,7 +1493,7 @@ struct work *wp;
 *
 ****************************************************************/
 
-void ezcaAutoErrorMessageOn()
+void epicsShareAPI ezcaAutoErrorMessageOn()
 {
 
 struct work *wp;
@@ -1523,7 +1526,7 @@ struct work *wp;
 *
 ****************************************************************/
 
-int ezcaClearMonitor(char *pvname, char type)
+int epicsShareAPI ezcaClearMonitor(char *pvname, char type)
 {
 
 struct channel *cp;
@@ -1656,7 +1659,7 @@ int rc;
 *
 ****************************************************************/
 
-void ezcaDebugOff()
+void epicsShareAPI ezcaDebugOff()
 {
 
 struct work *wp;
@@ -1690,7 +1693,7 @@ struct work *wp;
 *
 ****************************************************************/
 
-void ezcaDebugOn()
+void epicsShareAPI ezcaDebugOn()
 {
 
 struct work *wp;
@@ -1729,7 +1732,7 @@ struct work *wp;
 *
 ****************************************************************/
 
-int ezcaDelay(float sec)
+int epicsShareAPI ezcaDelay(float sec)
 {
 
 struct work *wp;
@@ -1789,7 +1792,7 @@ int rc;
 *
 ****************************************************************/
 
-void ezcaFree(void *buff)
+void epicsShareAPI ezcaFree(void *buff)
 {
 
 struct work *wp;
@@ -1823,7 +1826,7 @@ struct work *wp;
 *
 ****************************************************************/
 
-int ezcaGetRetryCount()
+int epicsShareAPI ezcaGetRetryCount()
 {
 
 struct work *wp;
@@ -1859,7 +1862,7 @@ int rc;
 *
 ****************************************************************/
 
-float ezcaGetTimeout()
+float epicsShareAPI ezcaGetTimeout()
 {
 
 struct work *wp;
@@ -1895,7 +1898,7 @@ float rc;
 *
 ****************************************************************/
 
-int ezcaPvToChid(char *pvname, chid **cid)
+int epicsShareAPI ezcaPvToChid(char *pvname, chid **cid)
 {
 
 struct channel *cp;
@@ -1980,7 +1983,7 @@ int rc;
 *
 ****************************************************************/
 
-int ezcaSetMonitor(char *pvname, char type)
+int epicsShareAPI ezcaSetMonitor(char *pvname, char type)
 {
 
 struct channel *cp;
@@ -2209,7 +2212,7 @@ int rc;
 *
 ****************************************************************/
 
-int ezcaSetRetryCount(int retry)
+int epicsShareAPI ezcaSetRetryCount(int retry)
 {
 
 struct work *wp;
@@ -2258,7 +2261,7 @@ int rc;
 *
 ****************************************************************/
 
-int ezcaSetTimeout(float sec)
+int epicsShareAPI ezcaSetTimeout(float sec)
 {
 
 struct work *wp;
@@ -2307,7 +2310,7 @@ int rc;
 *
 ****************************************************************/
 
-int ezcaStartGroup()
+int epicsShareAPI ezcaStartGroup()
 {
 
 struct work *wp;
@@ -2367,7 +2370,7 @@ int rc;
 *
 ****************************************************************/
 
-void ezcaTraceOff()
+void epicsShareAPI ezcaTraceOff()
 {
 
 struct work *wp;
@@ -2401,7 +2404,7 @@ struct work *wp;
 *
 ****************************************************************/
 
-void ezcaTraceOn()
+void epicsShareAPI ezcaTraceOn()
 {
 
 struct work *wp;
@@ -2444,7 +2447,7 @@ struct work *wp;
 *
 ****************************************************************/
 
-int ezcaGet(char *pvname, char type, int nelem, void *buff)
+int epicsShareAPI ezcaGet(char *pvname, char type, int nelem, void *buff)
 {
 
 struct work *wp;
@@ -2582,7 +2585,7 @@ int rc;
 *
 ****************************************************************/
 
-int ezcaGetControlLimits(char *pvname, double *low, double *high)
+int epicsShareAPI ezcaGetControlLimits(char *pvname, double *low, double *high)
 {
 
 struct work *wp;
@@ -2704,7 +2707,7 @@ int rc;
 *
 ****************************************************************/
 
-int ezcaGetGraphicLimits(char *pvname, double *low, double *high)
+int epicsShareAPI ezcaGetGraphicLimits(char *pvname, double *low, double *high)
 {
 
 struct work *wp;
@@ -2827,7 +2830,7 @@ int rc;
 *
 ****************************************************************/
 
-int ezcaGetNelem(char *pvname, int *nelem)
+int epicsShareAPI ezcaGetNelem(char *pvname, int *nelem)
 {
 
 struct channel *cp;
@@ -2929,7 +2932,7 @@ int rc;
 *
 ****************************************************************/
 
-int ezcaGetPrecision(char *pvname, short *precision)
+int epicsShareAPI ezcaGetPrecision(char *pvname, short *precision)
 {
 
 struct channel *cp;
@@ -3041,7 +3044,7 @@ int rc;
 *
 ****************************************************************/
 
-int ezcaGetStatus(char *pvname, TS_STAMP *timestamp, 
+int epicsShareAPI ezcaGetStatus(char *pvname, TS_STAMP *timestamp, 
     short *status, short *severity)
 {
 
@@ -3184,7 +3187,7 @@ int rc;
 *
 ****************************************************************/
 
-int ezcaGetUnits(char *pvname, char *units)
+int epicsShareAPI ezcaGetUnits(char *pvname, char *units)
 {
 
 struct channel *cp;
@@ -3296,8 +3299,8 @@ int rc;
 *
 ****************************************************************/
 
-int ezcaGetWithStatus(char *pvname, char type, int nelem, void *buff,
-    TS_STAMP *timestamp, short *status, short *severity)
+int epicsShareAPI ezcaGetWithStatus(char *pvname, char type, int nelem, 
+	void *buff, TS_STAMP *timestamp, short *status, short *severity)
 {
 
 struct channel *cp;
@@ -3460,7 +3463,7 @@ printf("ezcaGetWithStatus(): did not find an active monitor with a value\n");
 *
 ****************************************************************/
 
-int ezcaPut(char *pvname, char type, int nelem, void *buff)
+int epicsShareAPI ezcaPut(char *pvname, char type, int nelem, void *buff)
 {
 
 struct channel *cp;
@@ -3720,7 +3723,7 @@ int rc;
 *
 ****************************************************************/
 
-int ezcaPutOldCa(char *pvname, char type, int nelem, void *buff)
+int epicsShareAPI ezcaPutOldCa(char *pvname, char type, int nelem, void *buff)
 {
 
 struct channel *cp;
