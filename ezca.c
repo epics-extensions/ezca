@@ -441,7 +441,7 @@ int epicsShareAPI ezcaEndGroupWithReport(int **rcs, int *nrcs)
 
 struct work *wp;
 BOOL needs_work;
-int status;
+int status = 0;
 int attempts;
 unsigned int nelem;
 unsigned int i;
@@ -467,7 +467,7 @@ int rc;
 	    if (wp->rc == EZCA_OK)
 	    {
 		/* all input args OK */
-		if (wp->cp = find_channel(wp->pvname))
+		if ((wp->cp = find_channel(wp->pvname)))
 		{
 		    if (Trace || Debug)
 	printf("ezcaEndGroupWithReport() was able to find_channel() >%s<\n", 
@@ -478,9 +478,9 @@ int rc;
 		    /* not in Channels  must ca_search_and_connect() and add */
 		    if (Trace || Debug)
 printf("ezcaEndGroupWithReport() could not find_channel() >%s< must ca_search_and_connect() and add\n", wp->pvname);
-		    if (wp->cp = pop_channel())
+		    if ((wp->cp = pop_channel()))
 		    {
-			if ((wp->cp)->pvname = strdup(wp->pvname))
+			if (((wp->cp)->pvname = strdup(wp->pvname)))
 			{
 			    if (EzcaQueueSearchAndConnect(wp, wp->cp) 
 				    == ECA_NORMAL)
@@ -631,7 +631,7 @@ printf("ezcaEndGroupWithReport(): did not find an active monitor with a value fo
 				wp->needs_work = FALSE;
 				wp->trashme = TRUE;
 				if (Debug)
-				    printf("trashing wp %x\n", wp);
+				    printf("trashing wp %p\n", wp);
 
 			    } /* endif */
 			}
@@ -719,7 +719,7 @@ printf("ezcaEndGroupWithReport(): did not find an active monitor with a value fo
 			wp->trashme = TRUE;
 
 			if (Debug)
-			    printf("trashing wp %x\n", wp);
+			    printf("trashing wp %p\n", wp);
 
 			wp->rc = EZCA_CAFAILURE;
 			wp->error_msg = ErrorMsgs[CAPENDEVENT_MSG_IDX];
@@ -758,7 +758,7 @@ printf("ezcaEndGroupWithReport(): did not find an active monitor with a value fo
 			    wp->trashme = TRUE;
 
 			    if (Debug)
-				printf("trashing wp %x\n", wp);
+				printf("trashing wp %p\n", wp);
 			} /* endif */
 		    } /* endif */
 		} /* endfor */
@@ -968,11 +968,11 @@ int rc;
 
 	if (nbytes > 0)
 	{
-	    if (*buff = calloc(nbytes, 1))
+	    if ((*buff = calloc(nbytes, 1)))
 	    {
 		if (Debug)
-	    printf("ezcaGetErrorString() just allocated %d bytes start %x\n", 
-		    nbytes, *buff);
+	    printf("ezcaGetErrorString() just allocated %d bytes\n", 
+		    nbytes);
 
 		/* filling the buffer */
 
@@ -1275,7 +1275,7 @@ int rc;
     {
 	if (VALID_EZCA_DATA_TYPE(type))
 	{
-	    if (cp = find_channel(pvname))
+	    if ((cp = find_channel(pvname)))
 	    {
 		mp = cp->monitor_list;
 		found = FALSE;
@@ -1468,7 +1468,7 @@ struct work *wp;
 
     prologue();
 
-    if (wp = get_work_single())
+    if ((wp = get_work_single()))
     {
 	ErrorLocation = SINGLEWORK;
 
@@ -1502,7 +1502,7 @@ struct work *wp;
 
     prologue();
 
-    if (wp = get_work_single())
+    if ((wp = get_work_single()))
     {
 	ErrorLocation = SINGLEWORK;
 
@@ -1539,7 +1539,7 @@ int rc;
 
     prologue();
 
-    if (wp = get_work_single())
+    if ((wp = get_work_single()))
     {
 	ErrorLocation = SINGLEWORK;
 
@@ -1582,7 +1582,7 @@ int rc;
 	if (wp->rc == EZCA_OK)
 	{
 	    /* all input args OK */
-	    if (cp = find_channel(wp->pvname))
+	    if ((cp = find_channel(wp->pvname)))
 	    {
 		/* everything OK so far ... otherwise something */
 		/* went wrong and it is already explained in wp */
@@ -1668,7 +1668,7 @@ struct work *wp;
 
     prologue();
 
-    if (wp = get_work_single())
+    if ((wp = get_work_single()))
     {
 	ErrorLocation = SINGLEWORK;
 
@@ -1702,7 +1702,7 @@ struct work *wp;
 
     prologue();
 
-    if (wp = get_work_single())
+    if ((wp = get_work_single()))
     {
 	ErrorLocation = SINGLEWORK;
 
@@ -1743,7 +1743,7 @@ int rc;
 
     prologue();
 
-    if (wp = get_work_single())
+    if ((wp = get_work_single()))
     {
 	ErrorLocation = SINGLEWORK;
 
@@ -1801,7 +1801,7 @@ struct work *wp;
 
     prologue();
 
-    if (wp = get_work_single())
+    if ((wp = get_work_single()))
     {
 	ErrorLocation = SINGLEWORK;
 
@@ -1813,7 +1813,7 @@ struct work *wp;
 	    free(buff);
 
 	if (Debug)
-	    printf("ezcaFree() just freed starting %x\n", buff);
+	    printf("ezcaFree() just freed starting\n");
     }
     else
     {
@@ -1836,7 +1836,7 @@ int rc;
 
     prologue();
 
-    if (wp = get_work_single())
+    if ((wp = get_work_single()))
     {
 	ErrorLocation = SINGLEWORK;
 
@@ -1872,7 +1872,7 @@ float rc;
 
     prologue();
 
-    if (wp = get_work_single())
+    if ((wp = get_work_single()))
     {
 	ErrorLocation = SINGLEWORK;
 
@@ -1909,7 +1909,7 @@ int rc;
 
     prologue();
 
-    if (wp = get_work_single())
+    if ((wp = get_work_single()))
     {
 	ErrorLocation = SINGLEWORK;
 
@@ -1922,7 +1922,7 @@ int rc;
 	    {
 		/* arguments are valid */
 
-		if (wp->pvname = strdup(pvname))
+		if ((wp->pvname = strdup(pvname)))
 		{
 
 		    get_channel(wp, &cp);
@@ -1996,7 +1996,7 @@ int rc;
 
     prologue();
 
-    if (wp = get_work_single())
+    if ((wp = get_work_single()))
     {
 	ErrorLocation = SINGLEWORK;
 
@@ -2068,7 +2068,7 @@ int rc;
 
 		    if (Trace || Debug)
     printf("ezcaSetMonitor(): monitor did not exist. establishing one now\n");
-		    if (mp = pop_monitor())
+		    if ((mp = pop_monitor()))
 		    {
 			/* filling the mp here because ca_pend_io() could   */
 			/* cause my_monitor_callback() go be executed and   */
@@ -2222,7 +2222,7 @@ int rc;
 
     prologue();
 
-    if (wp = get_work_single())
+    if ((wp = get_work_single()))
     {
 	ErrorLocation = SINGLEWORK;
 
@@ -2271,7 +2271,7 @@ int rc;
 
     prologue();
 
-    if (wp = get_work_single())
+    if ((wp = get_work_single()))
     {
 	ErrorLocation = SINGLEWORK;
 
@@ -2320,7 +2320,7 @@ int rc;
 
     prologue();
 
-    if (wp = get_work_single())
+    if ((wp = get_work_single()))
     {
 	ErrorLocation = SINGLEWORK;
 
@@ -2379,7 +2379,7 @@ struct work *wp;
 
     prologue();
 
-    if (wp = get_work_single())
+    if ((wp = get_work_single()))
     {
 	ErrorLocation = SINGLEWORK;
 
@@ -2413,7 +2413,7 @@ struct work *wp;
 
     prologue();
 
-    if (wp = get_work_single())
+    if ((wp = get_work_single()))
     {
 	ErrorLocation = SINGLEWORK;
 
@@ -2454,13 +2454,11 @@ int epicsShareAPI ezcaGet(char *pvname, char type, int nelem, void *buff)
 
 struct work *wp;
 struct channel *cp;
-struct monitor *mp;
-BOOL found;
 int rc;
 
     prologue();
 
-    if (wp = get_work())
+    if ((wp = get_work()))
     {
 
 	ErrorLocation = (InGroup ? LISTWORK : SINGLEWORK);
@@ -2596,7 +2594,7 @@ int rc;
 
     prologue();
 
-    if (wp = get_work())
+    if ((wp = get_work()))
     {
 
 	ErrorLocation = (InGroup ? LISTWORK : SINGLEWORK);
@@ -2718,7 +2716,7 @@ int rc;
 
     prologue();
 
-    if (wp = get_work())
+    if ((wp = get_work()))
     {
 
 	ErrorLocation = (InGroup ? LISTWORK : SINGLEWORK);
@@ -2841,7 +2839,7 @@ int rc;
 
     prologue();
 
-    if (wp = get_work())
+    if ((wp = get_work()))
     {
 
 	ErrorLocation = (InGroup ? LISTWORK : SINGLEWORK);
@@ -2943,7 +2941,7 @@ int rc;
 
     prologue();
 
-    if (wp = get_work())
+    if ((wp = get_work()))
     {
 
 	ErrorLocation = (InGroup ? LISTWORK : SINGLEWORK);
@@ -3056,7 +3054,7 @@ int rc;
 
     prologue();
 
-    if (wp = get_work())
+    if ((wp = get_work()))
     {
 
 	ErrorLocation = (InGroup ? LISTWORK : SINGLEWORK);
@@ -3198,7 +3196,7 @@ int rc;
 
     prologue();
 
-    if (wp = get_work())
+    if ((wp = get_work()))
     {
 
 	ErrorLocation = (InGroup ? LISTWORK : SINGLEWORK);
@@ -3311,7 +3309,7 @@ int rc;
 
     prologue();
 
-    if (wp = get_work())
+    if ((wp = get_work()))
     {
 
 	ErrorLocation = (InGroup ? LISTWORK : SINGLEWORK);
@@ -3477,7 +3475,7 @@ int rc;
 
     prologue();
 
-    if (wp = get_work())
+    if ((wp = get_work()))
     {
 
 	ErrorLocation = (InGroup ? LISTWORK : SINGLEWORK);
@@ -3526,7 +3524,7 @@ int rc;
 
 	if (nbytes > 0)
 	{
-	    if (wp->pval = (void *) malloc ((unsigned) nbytes))
+	    if ((wp->pval = (void *) malloc ((unsigned) nbytes)))
 		memcpy((char *) (wp->pval), (char *) buff, nbytes);
 	}
 	else
@@ -3627,7 +3625,7 @@ int rc;
 				    wp->trashme = TRUE;
 
 				    if (Debug)
-					printf("trashing wp %x\n", wp);
+					printf("trashing wp\n");
 				} /* endif */
 			    } /* endfor */
 
@@ -3656,7 +3654,7 @@ int rc;
 				    wp->trashme = TRUE;
 
 				    if (Debug)
-					printf("trashing wp %x\n", wp);
+					printf("trashing wp\n");
 				} /* endif */
 			    } /* endif */
 			}
@@ -3671,7 +3669,7 @@ int rc;
 
 			    wp->trashme = TRUE;
 			    if (Debug)
-				printf("trashing wp %x\n", wp);
+				printf("trashing wp\n");
 			} /* endif */
 		    }
 		    else
@@ -3731,13 +3729,11 @@ int epicsShareAPI ezcaPutOldCa(char *pvname, char type, int nelem, void *buff)
 struct channel *cp;
 struct work *wp;
 int nbytes;
-int attempts;
-BOOL reported, error;
 int rc;
 
     prologue();
 
-    if (wp = get_work())
+    if ((wp = get_work()))
     {
 
 	ErrorLocation = (InGroup ? LISTWORK : SINGLEWORK);
@@ -3786,7 +3782,7 @@ int rc;
 
 	if (nbytes > 0)
 	{
-	    if (wp->pval = (void *) malloc ((unsigned) nbytes))
+	    if ((wp->pval = (void *) malloc ((unsigned) nbytes)))
 		memcpy((char *) (wp->pval), (char *) buff, nbytes);
 	}
 	else
@@ -4060,7 +4056,7 @@ BOOL done;
     if (!wp || !cpp)
     {
 	fprintf(stderr, 
-	    "EZCA FATAL ERROR: get_channel() got wp %x cpp %x\n", wp, cpp);
+	    "EZCA FATAL ERROR: get_channel() got wp %p cpp %p\n", wp, cpp);
 	exit(1);
     } /* endif */
 
@@ -4072,7 +4068,7 @@ BOOL done;
 
     if (wp->pvname)
     {
-	if (*cpp = find_channel(wp->pvname))
+	if ((*cpp = find_channel(wp->pvname)))
 	{
 	    if (Trace || Debug)
 		printf("get_channel(): was able to find_channel()\n");
@@ -4083,9 +4079,9 @@ BOOL done;
 	    if (Trace || Debug)
 printf("get_channel(): could not find_channel(). must ca_search_and_connect() and add\n");
 
-	    if (*cpp = pop_channel())
+	    if ((*cpp = pop_channel()))
 	    {
-		if ((*cpp)->pvname = strdup(wp->pvname))
+		if (((*cpp)->pvname = strdup(wp->pvname)))
 		{
 		    if (EzcaQueueSearchAndConnect(wp, *cpp) == ECA_NORMAL)
 		    {
@@ -4207,7 +4203,7 @@ BOOL rc;
 				wp->nelem*dbr_value_size[DBR_TIME_CHAR]);
 
 			    if (Trace || Debug)
-	    printf("get_from_monitor() just memcpy %d bytes from %x to %x\n",
+	    printf("get_from_monitor() just memcpy %d bytes from %p to %p\n",
 				wp->nelem*dbr_value_size[DBR_TIME_CHAR],
 				mp->pval, wp->pval);
 
@@ -4218,7 +4214,7 @@ BOOL rc;
 			    wp->nelem*dbr_value_size[DBR_TIME_STRING]);
 
 			    if (Trace || Debug)
-	    printf("get_from_monitor() just memcpy %d bytes from %x to %x\n",
+	    printf("get_from_monitor() just memcpy %d bytes from %p to %p\n",
 			    wp->nelem*dbr_value_size[DBR_TIME_STRING], 
 				mp->pval, wp->pval);
 
@@ -4229,7 +4225,7 @@ BOOL rc;
 			    wp->nelem*dbr_value_size[DBR_TIME_SHORT]);
 
 			    if (Trace || Debug)
-	    printf("get_from_monitor() just memcpy %d bytes from %x to %x\n",
+	    printf("get_from_monitor() just memcpy %d bytes from %p to %p\n",
 			    wp->nelem*dbr_value_size[DBR_TIME_SHORT], 
 				mp->pval, wp->pval);
 
@@ -4240,7 +4236,7 @@ BOOL rc;
 			    wp->nelem*dbr_value_size[DBR_TIME_LONG]);
 
 			if (Trace || Debug)
-	    printf("get_from_monitor() just memcpy %d bytes from %x to %x\n",
+	    printf("get_from_monitor() just memcpy %d bytes from %p to %p\n",
 				wp->nelem*dbr_value_size[DBR_TIME_LONG],
 				mp->pval, wp->pval);
 
@@ -4250,7 +4246,7 @@ BOOL rc;
 				wp->nelem*dbr_value_size[DBR_TIME_FLOAT]);
 
 			    if (Trace || Debug)
-	    printf("get_from_monitor() just memcpy %d bytes from %x to %x\n",
+	    printf("get_from_monitor() just memcpy %d bytes from %p to %p\n",
 				wp->nelem*dbr_value_size[DBR_TIME_FLOAT], 
 				mp->pval, wp->pval);
 
@@ -4260,7 +4256,7 @@ BOOL rc;
 				wp->nelem*dbr_value_size[DBR_TIME_DOUBLE]);
 
 			    if (Trace || Debug)
-	    printf("get_from_monitor() just memcpy %d bytes from %x to %x\n",
+	    printf("get_from_monitor() just memcpy %d bytes from %p to %p\n",
 				wp->nelem*dbr_value_size[DBR_TIME_DOUBLE], 
 				mp->pval, wp->pval);
 
@@ -4327,7 +4323,7 @@ BOOL rc;
     else
     {
 	fprintf(stderr, 
-	    "EZCA FATAL ERROR: get_from_monitor() got wp %x cp %x\n", wp, cp);
+	    "EZCA FATAL ERROR: get_from_monitor() got wp %p cp %p\n", wp, cp);
 	exit(1);
     } /* endif */
 
@@ -4500,7 +4496,7 @@ BOOL rc;
 
 		    wp->trashme = TRUE;
 		    if (Debug)
-			printf("trashing wp %x\n", wp);
+			printf("trashing wp %p\n", wp);
 		} /* endif */
 	    }
 	    else
@@ -4520,7 +4516,7 @@ BOOL rc;
     }
     else
     {
-	fprintf(stderr, "EZCA FATAL ERROR: issue_get() got wp %x cp %x\n", 
+	fprintf(stderr, "EZCA FATAL ERROR: issue_get() got wp %p cp %p\n", 
 	    wp, cp);
 	exit(1);
     } /* endif */
@@ -4567,7 +4563,7 @@ int attempts;
 		wp->trashme = TRUE;
 
 		if (Debug)
-		    printf("trashing wp %x\n", wp);
+		    printf("trashing wp %p\n", wp);
 	    } /* endif */
 	} /* endfor */
 
@@ -4588,7 +4584,7 @@ int attempts;
 	    wp->trashme = TRUE;
 
 	    if (Debug)
-		printf("trashing wp %x\n", wp);
+		printf("trashing wp %p\n", wp);
 	} /* endif */
     } 
     else
@@ -4688,7 +4684,7 @@ int rc;
     if (!wp || !mp || !(mp->cp))
     {
 	fprintf(stderr, 
-	    "EZCA FATAL ERROR: EzcaAddEvent() got wp %x mp %x mp->cp %x\n", 
+	    "EZCA FATAL ERROR: EzcaAddEvent() got wp %p mp %p mp->cp %p\n", 
 	    wp, mp, mp->cp);
 	exit(1);
     } /* endif */
@@ -4827,7 +4823,7 @@ int rc;
     if (!wp || !cp)
     {
 	fprintf(stderr, 
-	    "EZCA FATAL ERROR: EzcaArrayGetCallback() got wp %x cp %x\n", 
+	    "EZCA FATAL ERROR: EzcaArrayGetCallback() got wp %p cp %p\n", 
 	    wp, cp);
 	exit(1);
     } /* endif */
@@ -5028,7 +5024,7 @@ int rc;
     if (!wp || !cp)
     {
 	fprintf(stderr, 
-	    "EZCA FATAL ERROR: EzcaArrayPutCallback() got wp %x cp %x\n", 
+	    "EZCA FATAL ERROR: EzcaArrayPutCallback() got wp %p cp %p\n", 
 	    wp, cp);
 	exit(1);
     } /* endif */
@@ -5051,7 +5047,7 @@ int rc;
 
     if (Trace || Debug)
     {
-printf("ca_array_put_callback(ezcatype (%d)->dbrtype (%d), nelem %d, >%s<, wp->pval %x)\n", 
+printf("ca_array_put_callback(ezcatype (%d)->dbrtype (%d), nelem %d, >%s<, wp->pval %p)\n", 
 	    wp->ezcadatatype, wp->dbr_type, wp->nelem, wp->pvname, wp->pval); 
 
 	if (Debug)
@@ -5092,7 +5088,7 @@ int rc;
     if (!wp || !cp)
     {
 	fprintf(stderr, 
-	    "EZCA FATAL ERROR: EzcaArrayPut() got wp %x cp %x\n", wp, cp);
+	    "EZCA FATAL ERROR: EzcaArrayPut() got wp %p cp %p\n", wp, cp);
 	exit(1);
     } /* endif */
 
@@ -5114,7 +5110,7 @@ int rc;
 
     if (Trace || Debug)
     {
-printf("ca_array_put(ezcatype (%d)->dbrtype (%d), nelem %d, >%s<, wp->pval %x)\n", 
+printf("ca_array_put(ezcatype (%d)->dbrtype (%d), nelem %d, >%s<, wp->pval %p)\n", 
 	    wp->ezcadatatype, wp->dbr_type, wp->nelem, wp->pvname, wp->pval); 
 
 	if (Debug)
@@ -5299,7 +5295,7 @@ int rc;
     if (!wp || !cp)
     {
 	fprintf(stderr, 
-	    "EZCA FATAL ERROR: EzcaQueueSearchAndConnect() got wp %x cp %x\n", wp, cp);
+	    "EZCA FATAL ERROR: EzcaQueueSearchAndConnect() got wp %p cp %p\n", wp, cp);
 	exit(1);
     } /* endif */
 
@@ -5399,7 +5395,7 @@ int nbytes;
     if (Trace || Debug)
 	printf("entering my_get_callback()\n");
 
-    if (wp = (struct work *) arg.usr)
+    if ((wp = (struct work *) arg.usr))
     {
 	if (!(wp->trashme))
 	{
@@ -5412,7 +5408,7 @@ int nbytes;
 		if (arg.type == wp->dbr_type)
 		{
 		    if (Trace || Debug)
-	printf("my_get_callback() ezcadatatype %d (arg.type %d) worktype %d\n",
+	printf("my_get_callback() ezcadatatype %d (arg.type %ld) worktype %d\n",
 			wp->ezcadatatype, arg.type, wp->worktype);
 
 		    switch (arg.type)
@@ -5445,7 +5441,7 @@ int nbytes;
 				else
 				{
 				    fprintf(stderr, 
-    "EZCA FATAL ERROR: my_get_callback() wp->worktype %d wp->status %x wp->severity %x wp->tsp %x\n",
+    "EZCA FATAL ERROR: my_get_callback() wp->worktype %d wp->status %p wp->severity %p wp->tsp %p\n",
 					wp->worktype, wp->status, wp->severity,
 					wp->tsp);
 				    exit(1);
@@ -5454,7 +5450,7 @@ int nbytes;
 			    else
 			    {
 				fprintf(stderr, 
-    "EZCA FATAL ERROR: my_get_callback() found arg.type DBR_TIME_ENUM %d with wp->worktype %d\n",
+    "EZCA FATAL ERROR: my_get_callback() found arg.type DBR_TIME_ENUM %ld with wp->worktype %d\n",
 				    arg.type, wp->worktype);
 				exit(1);
 			    } /* endif */
@@ -5473,7 +5469,7 @@ int nbytes;
 					nbytes = arg.count*dbr_value_size[arg.type];
 
 					if (Trace || Debug)
-    printf("my_get_callback() size %d X count %d = nbytes %d ezcadatatype %d -> dbrtype %d\n", 
+    printf("my_get_callback() size %d X count %ld = nbytes %d ezcadatatype %d -> dbrtype %d\n", 
 						dbr_value_size[arg.type], arg.count,
 						nbytes, wp->ezcadatatype, 
 						wp->dbr_type);
@@ -5485,7 +5481,7 @@ int nbytes;
 						nbytes);
 
 					    if (Trace || Debug)
-			    printf("my_get_callback() just memcpy %d bytes to %x\n",
+			    printf("my_get_callback() just memcpy %d bytes to %p\n",
 						nbytes, wp->pval);
 					}
 					else
@@ -5499,7 +5495,7 @@ int nbytes;
 				    else
 				    {
 					fprintf(stderr, 
-	    "EZCA FATAL ERROR: my_get_callback() got %d nelem when asked for %d\n",
+	    "EZCA FATAL ERROR: my_get_callback() got %ld nelem when asked for %d\n",
 					    arg.count, wp->nelem);
 					exit(1);
 				    } /* endif */
@@ -5524,7 +5520,7 @@ int nbytes;
 				    else
 				    {
 					fprintf(stderr, 
-    "EZCA FATAL ERROR: my_get_callback() wp->worktype %d wp->status %x wp->severity %x wp->tsp %x\n",
+    "EZCA FATAL ERROR: my_get_callback() wp->worktype %d wp->status %p wp->severity %p wp->tsp %p\n",
 					    wp->worktype, wp->status, wp->severity,
 					    wp->tsp);
 					exit(1);
@@ -5534,7 +5530,7 @@ int nbytes;
 			    else
 			    {
 				fprintf(stderr, 
-    "EZCA FATAL ERROR: my_get_callback() found arg.type DBR_TIME_CHAR %d with wp->worktype %d\n",
+    "EZCA FATAL ERROR: my_get_callback() found arg.type DBR_TIME_CHAR %ld with wp->worktype %d\n",
 				    arg.type, wp->worktype);
 				exit(1);
 			    } /* endif */
@@ -5553,7 +5549,7 @@ int nbytes;
 					nbytes = arg.count*dbr_value_size[arg.type];
 
 					if (Trace || Debug)
-    printf("my_get_callback() size %d X count %d = nbytes %d ezcadatatype %d -> dbrtype %d\n", 
+    printf("my_get_callback() size %d X count %ld = nbytes %d ezcadatatype %d -> dbrtype %d\n", 
 						dbr_value_size[arg.type], arg.count,
 						nbytes, wp->ezcadatatype, 
 						wp->dbr_type);
@@ -5565,7 +5561,7 @@ int nbytes;
 						nbytes);
 
 					    if (Trace || Debug)
-			    printf("my_get_callback() just memcpy %d bytes to %x\n",
+			    printf("my_get_callback() just memcpy %d bytes to %p\n",
 						nbytes, wp->pval);
 					}
 					else
@@ -5579,7 +5575,7 @@ int nbytes;
 				    else
 				    {
 					fprintf(stderr, 
-	    "EZCA FATAL ERROR: my_get_callback() got %d nelem when asked for %d\n",
+	    "EZCA FATAL ERROR: my_get_callback() got %ld nelem when asked for %d\n",
 					    arg.count, wp->nelem);
 					exit(1);
 				    } /* endif */
@@ -5604,7 +5600,7 @@ int nbytes;
 				    else
 				    {
 					fprintf(stderr, 
-    "EZCA FATAL ERROR: my_get_callback() wp->worktype %d wp->status %x wp->severity %x wp->tsp %x\n",
+    "EZCA FATAL ERROR: my_get_callback() wp->worktype %d wp->status %p wp->severity %p wp->tsp %p\n",
 					    wp->worktype, wp->status, wp->severity,
 					    wp->tsp);
 					exit(1);
@@ -5614,7 +5610,7 @@ int nbytes;
 			    else
 			    {
 				fprintf(stderr, 
-    "EZCA FATAL ERROR: my_get_callback() found arg.type DBR_TIME_STRING %d with wp->worktype %d\n",
+    "EZCA FATAL ERROR: my_get_callback() found arg.type DBR_TIME_STRING %ld with wp->worktype %d\n",
 				    arg.type, wp->worktype);
 				exit(1);
 			    } /* endif */
@@ -5633,7 +5629,7 @@ int nbytes;
 					nbytes = arg.count*dbr_value_size[arg.type];
 
 					if (Trace || Debug)
-    printf("my_get_callback() size %d X count %d = nbytes %d ezcadatatype %d -> dbrtype %d\n", 
+    printf("my_get_callback() size %d X count %ld = nbytes %d ezcadatatype %d -> dbrtype %d\n", 
 						dbr_value_size[arg.type], arg.count,
 						nbytes, wp->ezcadatatype, 
 						wp->dbr_type);
@@ -5645,7 +5641,7 @@ int nbytes;
 					    nbytes);
 
 					    if (Trace || Debug)
-			    printf("my_get_callback() just memcpy %d bytes to %x\n",
+			    printf("my_get_callback() just memcpy %d bytes to %p\n",
 						nbytes, wp->pval);
 					}
 					else
@@ -5659,7 +5655,7 @@ int nbytes;
 				    else
 				    {
 					fprintf(stderr, 
-	    "EZCA FATAL ERROR: my_get_callback() got %d nelem when asked for %d\n",
+	    "EZCA FATAL ERROR: my_get_callback() got %ld nelem when asked for %d\n",
 					    arg.count, wp->nelem);
 					exit(1);
 				    } /* endif */
@@ -5684,7 +5680,7 @@ int nbytes;
 				    else
 				    {
 					fprintf(stderr, 
-    "EZCA FATAL ERROR: my_get_callback() wp->worktype %d wp->status %x wp->severity %x wp->tsp %x\n",
+    "EZCA FATAL ERROR: my_get_callback() wp->worktype %d wp->status %p wp->severity %p wp->tsp %p\n",
 					    wp->worktype, wp->status, wp->severity,
 					    wp->tsp);
 					exit(1);
@@ -5694,7 +5690,7 @@ int nbytes;
 			    else
 			    {
 				fprintf(stderr, 
-    "EZCA FATAL ERROR: my_get_callback() found arg.type DBR_TIME_SHORT %d with wp->worktype %d\n",
+    "EZCA FATAL ERROR: my_get_callback() found arg.type DBR_TIME_SHORT %ld with wp->worktype %d\n",
 				    arg.type, wp->worktype);
 				exit(1);
 			    } /* endif */
@@ -5713,7 +5709,7 @@ int nbytes;
 					nbytes = arg.count*dbr_value_size[arg.type];
 
 					if (Trace || Debug)
-    printf("my_get_callback() size %d X count %d = nbytes %d ezcadatatype %d -> dbrtype %d\n", 
+    printf("my_get_callback() size %d X count %ld = nbytes %d ezcadatatype %d -> dbrtype %d\n", 
 						dbr_value_size[arg.type], arg.count,
 						nbytes, wp->ezcadatatype, 
 						wp->dbr_type);
@@ -5725,7 +5721,7 @@ int nbytes;
 					    nbytes);
 
 					    if (Trace || Debug)
-			    printf("my_get_callback() just memcpy %d bytes to %x\n",
+			    printf("my_get_callback() just memcpy %d bytes to %p\n",
 						nbytes, wp->pval);
 					}
 					else
@@ -5739,7 +5735,7 @@ int nbytes;
 				    else
 				    {
 					fprintf(stderr, 
-	    "EZCA FATAL ERROR: my_get_callback() got %d nelem when asked for %d\n",
+	    "EZCA FATAL ERROR: my_get_callback() got %ld nelem when asked for %d\n",
 					    arg.count, wp->nelem);
 					exit(1);
 				    } /* endif */
@@ -5764,7 +5760,7 @@ int nbytes;
 				    else
 				    {
 					fprintf(stderr, 
-    "EZCA FATAL ERROR: my_get_callback() wp->worktype %d wp->status %x wp->severity %x wp->tsp %x\n",
+    "EZCA FATAL ERROR: my_get_callback() wp->worktype %d wp->status %p wp->severity %p wp->tsp %p\n",
 					    wp->worktype, wp->status, wp->severity,
 					    wp->tsp);
 					exit(1);
@@ -5774,7 +5770,7 @@ int nbytes;
 			    else
 			    {
 				fprintf(stderr, 
-    "EZCA FATAL ERROR: my_get_callback() found arg.type DBR_TIME_LONG %d with wp->worktype %d\n",
+    "EZCA FATAL ERROR: my_get_callback() found arg.type DBR_TIME_LONG %ld with wp->worktype %d\n",
 				    arg.type, wp->worktype);
 				exit(1);
 			    } /* endif */
@@ -5793,7 +5789,7 @@ int nbytes;
 					nbytes = arg.count*dbr_value_size[arg.type];
 
 					if (Trace || Debug)
-    printf("my_get_callback() size %d X count %d = nbytes %d ezcadatatype %d -> dbrtype %d\n", 
+    printf("my_get_callback() size %d X count %ld = nbytes %d ezcadatatype %d -> dbrtype %d\n", 
 						dbr_value_size[arg.type], arg.count,
 						nbytes, wp->ezcadatatype, 
 						wp->dbr_type);
@@ -5805,7 +5801,7 @@ int nbytes;
 					    nbytes);
 
 					    if (Trace || Debug)
-			    printf("my_get_callback() just memcpy %d bytes to %x\n",
+			    printf("my_get_callback() just memcpy %d bytes to %p\n",
 						nbytes, wp->pval);
 					}
 					else
@@ -5819,7 +5815,7 @@ int nbytes;
 				    else
 				    {
 					fprintf(stderr, 
-	    "EZCA FATAL ERROR: my_get_callback() got %d nelem when asked for %d\n",
+	    "EZCA FATAL ERROR: my_get_callback() got %ld nelem when asked for %d\n",
 					    arg.count, wp->nelem);
 					exit(1);
 				    } /* endif */
@@ -5844,7 +5840,7 @@ int nbytes;
 				    else
 				    {
 					fprintf(stderr, 
-    "EZCA FATAL ERROR: my_get_callback() wp->worktype %d wp->status %x wp->severity %x wp->tsp %x\n",
+    "EZCA FATAL ERROR: my_get_callback() wp->worktype %d wp->status %p wp->severity %p wp->tsp %p\n",
 					    wp->worktype, wp->status, wp->severity,
 					    wp->tsp);
 					exit(1);
@@ -5854,7 +5850,7 @@ int nbytes;
 			    else
 			    {
 				fprintf(stderr, 
-    "EZCA FATAL ERROR: my_get_callback() found arg.type DBR_TIME_FLOAT %d with wp->worktype %d\n",
+    "EZCA FATAL ERROR: my_get_callback() found arg.type DBR_TIME_FLOAT %ld with wp->worktype %d\n",
 				    arg.type, wp->worktype);
 				exit(1);
 			    } /* endif */
@@ -5873,7 +5869,7 @@ int nbytes;
 					nbytes = arg.count*dbr_value_size[arg.type];
 
 					if (Trace || Debug)
-    printf("my_get_callback() size %d X count %d = nbytes %d ezcadatatype %d -> dbrtype %d\n", 
+    printf("my_get_callback() size %d X count %ld = nbytes %d ezcadatatype %d -> dbrtype %d\n", 
 						dbr_value_size[arg.type], arg.count,
 						nbytes, wp->ezcadatatype, 
 						wp->dbr_type);
@@ -5885,7 +5881,7 @@ int nbytes;
 						nbytes);
 
 					    if (Trace || Debug)
-			    printf("my_get_callback() just memcpy %d bytes to %x\n",
+			    printf("my_get_callback() just memcpy %d bytes to %p\n",
 						nbytes, wp->pval);
 					}
 					else
@@ -5899,7 +5895,7 @@ int nbytes;
 				    else
 				    {
 					fprintf(stderr, 
-	    "EZCA FATAL ERROR: my_get_callback() got %d nelem when asked for %d\n",
+	    "EZCA FATAL ERROR: my_get_callback() got %ld nelem when asked for %d\n",
 					    arg.count, wp->nelem);
 					exit(1);
 				    } /* endif */
@@ -5924,7 +5920,7 @@ int nbytes;
 				    else
 				    {
 					fprintf(stderr, 
-    "EZCA FATAL ERROR: my_get_callback() wp->worktype %d wp->status %x wp->severity %x wp->tsp %x\n",
+    "EZCA FATAL ERROR: my_get_callback() wp->worktype %d wp->status %p wp->severity %p wp->tsp %p\n",
 					    wp->worktype, wp->status, wp->severity,
 					    wp->tsp);
 					exit(1);
@@ -5934,7 +5930,7 @@ int nbytes;
 			    else
 			    {
 				fprintf(stderr, 
-    "EZCA FATAL ERROR: my_get_callback() found arg.type DBR_TIME_DOUBLE %d with wp->worktype %d\n",
+    "EZCA FATAL ERROR: my_get_callback() found arg.type DBR_TIME_DOUBLE %ld with wp->worktype %d\n",
 				    arg.type, wp->worktype);
 				exit(1);
 			    } /* endif */
@@ -5984,7 +5980,7 @@ int nbytes;
 				    else
 				    {
 					fprintf(stderr, 
-    "EZCA FATAL ERROR: my_get_callback() worktype GETGRAPHICLIMITS got NULL wp->d1p %x wp->d2p %x\n",
+    "EZCA FATAL ERROR: my_get_callback() worktype GETGRAPHICLIMITS got NULL wp->d1p %p wp->d2p %p\n",
 					    wp->d1p, wp->d2p);
 					exit(1);
 				    } /* endif */
@@ -6003,14 +5999,14 @@ int nbytes;
 				    else
 				    {
 					fprintf(stderr, 
-    "EZCA FATAL ERROR: my_get_callback() worktype GETCONTROLLIMITS got NULL wp->d1p %x wp->d2p %x\n",
+    "EZCA FATAL ERROR: my_get_callback() worktype GETCONTROLLIMITS got NULL wp->d1p %p wp->d2p %p\n",
 					    wp->d1p, wp->d2p);
 					exit(1);
 				    } /* endif */
 				    break;
 				default:
 				    fprintf(stderr, 
-    "EZCA FATAL ERROR: my_get_callback() found arg.type DBR_CTRL_SHORT %d with wp->worktype %d\n",
+    "EZCA FATAL ERROR: my_get_callback() found arg.type DBR_CTRL_SHORT %ld with wp->worktype %d\n",
 				    arg.type, wp->worktype);
 				    exit(1);
 				    break;
@@ -6067,7 +6063,7 @@ int nbytes;
 				    else
 				    {
 					fprintf(stderr, 
-    "EZCA FATAL ERROR: my_get_callback() worktype GETGRAPHICLIMITS got NULL wp->d1p %x wp->d2p %x\n",
+    "EZCA FATAL ERROR: my_get_callback() worktype GETGRAPHICLIMITS got NULL wp->d1p %p wp->d2p %p\n",
 					    wp->d1p, wp->d2p);
 					exit(1);
 				    } /* endif */
@@ -6086,14 +6082,14 @@ int nbytes;
 				    else
 				    {
 					fprintf(stderr, 
-    "EZCA FATAL ERROR: my_get_callback() worktype GETCONTROLLIMITS got NULL wp->d1p %x wp->d2p %x\n",
+    "EZCA FATAL ERROR: my_get_callback() worktype GETCONTROLLIMITS got NULL wp->d1p %p wp->d2p %p\n",
 					    wp->d1p, wp->d2p);
 					exit(1);
 				    } /* endif */
 				    break;
 				default:
 				    fprintf(stderr, 
-    "EZCA FATAL ERROR: my_get_callback() found arg.type DBR_CTRL_FLOAT %d with wp->worktype %d\n",
+    "EZCA FATAL ERROR: my_get_callback() found arg.type DBR_CTRL_FLOAT %ld with wp->worktype %d\n",
 				    arg.type, wp->worktype);
 				    exit(1);
 				    break;
@@ -6139,7 +6135,7 @@ int nbytes;
 				    else
 				    {
 					fprintf(stderr, 
-    "EZCA FATAL ERROR: my_get_callback() worktype GETGRAPHICLIMITS got NULL wp->d1p %x wp->d2p %x\n",
+    "EZCA FATAL ERROR: my_get_callback() worktype GETGRAPHICLIMITS got NULL wp->d1p %p wp->d2p %p\n",
 					    wp->d1p, wp->d2p);
 					exit(1);
 				    } /* endif */
@@ -6158,14 +6154,14 @@ int nbytes;
 				    else
 				    {
 					fprintf(stderr, 
-    "EZCA FATAL ERROR: my_get_callback() worktype GETCONTROLLIMITS got NULL wp->d1p %x wp->d2p %x\n",
+    "EZCA FATAL ERROR: my_get_callback() worktype GETCONTROLLIMITS got NULL wp->d1p %p wp->d2p %p\n",
 					    wp->d1p, wp->d2p);
 					exit(1);
 				    } /* endif */
 				    break;
 				default:
 				    fprintf(stderr, 
-    "EZCA FATAL ERROR: my_get_callback() found arg.type DBR_CTRL_CHAR %d with wp->worktype %d\n",
+    "EZCA FATAL ERROR: my_get_callback() found arg.type DBR_CTRL_CHAR %ld with wp->worktype %d\n",
 				    arg.type, wp->worktype);
 				    exit(1);
 				    break;
@@ -6211,7 +6207,7 @@ int nbytes;
 				    else
 				    {
 					fprintf(stderr, 
-    "EZCA FATAL ERROR: my_get_callback() worktype GETGRAPHICLIMITS got NULL wp->d1p %x wp->d2p %x\n",
+    "EZCA FATAL ERROR: my_get_callback() worktype GETGRAPHICLIMITS got NULL wp->d1p %p wp->d2p %p\n",
 					    wp->d1p, wp->d2p);
 					exit(1);
 				    } /* endif */
@@ -6230,14 +6226,14 @@ int nbytes;
 				    else
 				    {
 					fprintf(stderr, 
-    "EZCA FATAL ERROR: my_get_callback() worktype GETCONTROLLIMITS got NULL wp->d1p %x wp->d2p %x\n",
+    "EZCA FATAL ERROR: my_get_callback() worktype GETCONTROLLIMITS got NULL wp->d1p %p wp->d2p %p\n",
 					    wp->d1p, wp->d2p);
 					exit(1);
 				    } /* endif */
 				    break;
 				default:
 				    fprintf(stderr, 
-    "EZCA FATAL ERROR: my_get_callback() found arg.type DBR_CTRL_LONG %d with wp->worktype %d\n",
+    "EZCA FATAL ERROR: my_get_callback() found arg.type DBR_CTRL_LONG %ld with wp->worktype %d\n",
 				    arg.type, wp->worktype);
 				    exit(1);
 				    break;
@@ -6294,7 +6290,7 @@ int nbytes;
 				    else
 				    {
 					fprintf(stderr, 
-"EZCA FATAL ERROR: my_get_callback() worktype GETGRAPHICLIMITS got NULL wp->d1p %x wp->d2p %x\n",
+"EZCA FATAL ERROR: my_get_callback() worktype GETGRAPHICLIMITS got NULL wp->d1p %p wp->d2p %p\n",
 					    wp->d1p, wp->d2p);
 					exit(1);
 				    } /* endif */
@@ -6313,14 +6309,14 @@ int nbytes;
 				    else
 				    {
 					fprintf(stderr, 
-"EZCA FATAL ERROR: my_get_callback() worktype GETCONTROLLIMITS got NULL wp->d1p %x wp->d2p %x\n",
+"EZCA FATAL ERROR: my_get_callback() worktype GETCONTROLLIMITS got NULL wp->d1p %p wp->d2p %p\n",
 					    wp->d1p, wp->d2p);
 					exit(1);
 				    } /* endif */
 				    break;
 				default:
 				    fprintf(stderr, 
-"EZCA FATAL ERROR: my_get_callback() found arg.type DBR_CTRL_DOUBLE %d with wp->worktype %d\n",
+"EZCA FATAL ERROR: my_get_callback() found arg.type DBR_CTRL_DOUBLE %ld with wp->worktype %d\n",
 				    arg.type, wp->worktype);
 				    exit(1);
 				    break;
@@ -6328,7 +6324,7 @@ int nbytes;
 			    break;
 			default:
 			    fprintf(stderr, 
-		    "EZCA FATAL ERROR: my_get_callback() unknown arg.type %d\n",
+		    "EZCA FATAL ERROR: my_get_callback() unknown arg.type %ld\n",
 				arg.type);
 			    exit(1);
 			    break;
@@ -6337,7 +6333,7 @@ int nbytes;
 		else
 		{
 		    fprintf(stderr, 
-    "EZCA FATAL ERROR: my_get_callback() got type %d when asked for type %d\n",
+    "EZCA FATAL ERROR: my_get_callback() got type %ld when asked for type %d\n",
 			arg.type, wp->dbr_type);
 		    exit(1);
 		} /* endif */
@@ -6411,7 +6407,7 @@ int nbytes;
     if (Trace || Debug)
 	printf("entering my_monitor_callback()\n");
 
-    if (mp = (struct monitor *) arg.usr)
+    if ((mp = (struct monitor *) arg.usr))
     {
 	if (mp->active)
 	{
@@ -6422,7 +6418,7 @@ int nbytes;
 		{
 		    nbytes = arg.count * dbr_value_size[arg.type];
 		    if (Trace || Debug)
-			printf("my_monitor_callback() pvname >%s< size %d X count %d = nbytes %d ezcadatatype %d -> dbrtype %d\n", 
+			printf("my_monitor_callback() pvname >%s< size %d X count %ld = nbytes %d ezcadatatype %d -> dbrtype %d\n", 
 			    (mp->cp ? (mp->cp)->pvname : "NULL"), 
 			    dbr_value_size[arg.type], arg.count,
 			    nbytes, mp->ezcadatatype, mp->dbr_type);
@@ -6430,7 +6426,7 @@ int nbytes;
 		    if (arg.count != mp->last_nelem)
 		    {
 			if (Trace || Debug)
-		    printf("my_monitor_callback() allocating %d X %d = %d bytes\n",
+		    printf("my_monitor_callback() allocating %ld X %d = %d bytes\n",
 				arg.count, dbr_value_size[arg.type], nbytes);
 
 			/* different amount coming in ... need new data buff */
@@ -6438,7 +6434,7 @@ int nbytes;
 			if (mp->pval)
 			{
 			    if (Trace || Debug)
-			printf("my_monitor_callback() freeing mp->pval %x\n",
+			printf("my_monitor_callback() freeing mp->pval %p\n",
 				    mp->pval);
 			    free((char *) mp->pval);
 			    mp->pval = (void *) NULL;
@@ -6453,7 +6449,7 @@ int nbytes;
 			} /* endif */
 
 			if (Trace || Debug)
-		printf("my_monitor_callback() allocated %d bytes mp->pval %x\n",
+		printf("my_monitor_callback() allocated %d bytes mp->pval %p\n",
 				nbytes, mp->pval);
 
 			mp->last_nelem = arg.count;
@@ -6530,13 +6526,13 @@ int nbytes;
 			    break;
 			default:
 			    fprintf(stderr, 
-"EZCA FATAL ERROR: my_monitor_callback() encountered unrecognizable type %d\n",
+"EZCA FATAL ERROR: my_monitor_callback() encountered unrecognizable type %ld\n",
 				arg.type);
 			    break;
 		    } /* end switch() */
 
 		    if (Trace || Debug)
-		    printf("my_monitor_callback() just memcpy %d bytes to %x\n",
+		    printf("my_monitor_callback() just memcpy %d bytes to %p\n",
 			    nbytes, mp->pval);
 
 		    mp->needs_reading = TRUE;
@@ -6550,7 +6546,7 @@ int nbytes;
 		    if (mp->pval)
 		    {
 			if (Trace || Debug)
-			printf("my_monitor_callback() freeing mp->pval %x\n",
+			printf("my_monitor_callback() freeing mp->pval %p\n",
 				mp->pval);
 			free((char *) mp->pval);
 		    } /* endif */
@@ -6565,7 +6561,7 @@ int nbytes;
 	    else
 	    {
 		fprintf(stderr, 
-"EZCA FATAL ERROR: my_monitor_callback() got type %d when asked for type %d\n",
+"EZCA FATAL ERROR: my_monitor_callback() got type %ld when asked for type %d\n",
 		    arg.type, mp->dbr_type);
 		exit(1);
 	    } /* endif */
@@ -6614,7 +6610,7 @@ struct work *wp;
     if (Trace || Debug)
 	printf("entering my_put_callback()\n");
 
-    if (wp = (struct work *) arg.usr)
+    if ((wp = (struct work *) arg.usr))
     {
 	if (!(wp->trashme))
 	{
@@ -6677,9 +6673,9 @@ struct monitor *mp;
 	/* note that this loop ends up */
 	/* with p->monitor_list = NULL */
 
-	while (mp = cp->monitor_list)
+	while ((mp = cp->monitor_list))
 	{
-	    if (cp->monitor_list = mp->right)
+	    if ((cp->monitor_list = mp->right))
 		(cp->monitor_list)->left = (struct monitor *) NULL;
 
 	    /* not calling clean_and_push_monitor() here because want to */
@@ -6765,7 +6761,7 @@ int i;
 	    malloc((unsigned) (sizeof(struct channel)*NODESPERMAL))) != NULL)
         {
 	    if (Debug)
-		printf("pop_channel() allocated sizeof(struct channel) %d * NODESPERMAL %d bytes = %d bytes %x\n", 
+		printf("pop_channel() allocated sizeof(struct channel) %d * NODESPERMAL %d bytes = %d bytes %p\n", 
 		    sizeof(struct channel), NODESPERMAL, 
 			sizeof(struct channel)*NODESPERMAL, Channel_avail_hdr);
 
@@ -6774,13 +6770,13 @@ int i;
                 rc->next = rc + 1;
 		rc->pvname = (char *) NULL;
 		if (Debug)
-		    printf("i = %d rc %x rc->next %x\n", i, rc, rc->next);
+		    printf("i = %d rc %p rc->next %p\n", i, rc, rc->next);
                 rc++;
             } /* endfor */
             rc->next = (struct channel *) NULL;
 	    rc->pvname = (char *) NULL;
 	    if (Debug)
-		printf("i = %d rc %x rc->next %x\n", i, rc, rc->next);
+		printf("i = %d rc %p rc->next %p\n", i, rc, rc->next);
             rc = Channel_avail_hdr;
             Channel_avail_hdr = rc->next;
         }
@@ -6802,7 +6798,7 @@ int i;
 
     if (Debug)
     {
-	printf("exiting pop_channel() rc %x rc->next %x\n", 
+	printf("exiting pop_channel() rc %p rc->next %p\n", 
 	    rc, (rc ? rc->next : NULL));
 	print_state();
     } /* endif */
@@ -6839,7 +6835,7 @@ int i;
 	    malloc((unsigned) (sizeof(struct monitor)*NODESPERMAL))) != NULL)
         {
 	    if (Debug)
-		printf("pop_monitor() allocated sizeof(struct monitor) %d * NODESPERMAL %d bytes = %d bytes %x\n", 
+		printf("pop_monitor() allocated sizeof(struct monitor) %d * NODESPERMAL %d bytes = %d bytes %p\n", 
 		    sizeof(struct monitor), NODESPERMAL, 
 		    sizeof(struct monitor)*NODESPERMAL, Monitor_avail_hdr);
 
@@ -6848,14 +6844,14 @@ int i;
                 rc->left = rc + 1;
 
 		if (Debug)
-		    printf("i = %d rc %x rc->left %x\n", i, rc, rc->left);
+		    printf("i = %d rc %p rc->left %p\n", i, rc, rc->left);
 
                 rc++;
             } /* endfor */
             rc->left = (struct monitor *) NULL;
 
 	    if (Debug)
-		printf("i = %d rc %x rc->left %x\n", i, rc, rc->left);
+		printf("i = %d rc %p rc->left %p\n", i, rc, rc->left);
 
             rc = Monitor_avail_hdr;
             Monitor_avail_hdr = rc->left;
@@ -6881,7 +6877,7 @@ int i;
 
     if (Debug)
     {
-	printf("exiting pop_monitor() (rc->lft %x) rc %x (rc->right %x)\n", 
+	printf("exiting pop_monitor() (rc->lft %p) rc %p (rc->right %p)\n", 
 	    (rc ? rc->left : NULL), rc, (rc ? rc->right : NULL));
 	print_state();
     } /* endif */
@@ -6919,7 +6915,7 @@ int i;
         {
 
 	    if (Debug)
-		printf("pop_work() allocated sizeof(struct work) %d * NODESPERMAL %d bytes = %d bytes %x\n", 
+		printf("pop_work() allocated sizeof(struct work) %d * NODESPERMAL %d bytes = %d bytes %p\n", 
 		    sizeof(struct work), NODESPERMAL, 
 		    sizeof(struct work)*NODESPERMAL, Work_avail_hdr);
 
@@ -6930,7 +6926,7 @@ int i;
 		rc->aux_error_msg = (char *) NULL;
 
 		if (Debug)
-		    printf("i = %d rc %x rc->next %x\n", i, rc, rc->next);
+		    printf("i = %d rc %p rc->next %p\n", i, rc, rc->next);
 
                 rc++;
             } /* endfor */
@@ -6939,7 +6935,7 @@ int i;
 	    rc->aux_error_msg = (char *) NULL;
 
 	    if (Debug)
-		printf("i = %d rc %x rc->next %x\n", i, rc, rc->next);
+		printf("i = %d rc %p rc->next %p\n", i, rc, rc->next);
 
             rc = Work_avail_hdr;
             Work_avail_hdr = rc->next;
@@ -6953,7 +6949,7 @@ int i;
 
     if (Debug)
     {
-	printf("exiting pop_work() rc %x rc->next %x\n", 
+	printf("exiting pop_work() rc %p rc->next %p\n", 
 	    rc, (rc ? rc->next : NULL));
 	print_state();
     } /* endif */
@@ -7019,7 +7015,7 @@ static void push_channel(struct channel *p)
 
     if (Debug)
     {
-	printf("entering push_channel() p %x\n", p);
+	printf("entering push_channel() p %p\n", p);
 	print_state();
     } /* endif */
 
@@ -7055,7 +7051,7 @@ static void push_monitor(struct monitor *p)
 
     if (Debug)
     {
-	printf("entering push_monitor() p %x\n", p);
+	printf("entering push_monitor() p %p\n", p);
 	print_state();
     } /* endif */
 
@@ -7083,7 +7079,7 @@ static void push_work(struct work *p)
 
     if (Debug)
     {
-	printf("entering push_work() p %x trashme %c\n", 
+	printf("entering push_work() p %p trashme %c\n", 
 	    p, (p ? (p->trashme ? 'T' : 'F') : 'X'));
 	print_state();
     } /* endif */
@@ -7150,9 +7146,9 @@ static void print_channel_avail()
 
 struct channel *cp;
 
-    printf("Channel_avail_hdr %x : ", Channel_avail_hdr); 
+    printf("Channel_avail_hdr %p : ", Channel_avail_hdr); 
     for (cp = Channel_avail_hdr; cp; cp = cp->next) 
-	printf("%x (nxt %x) ", cp, cp->next); 
+	printf("%p (nxt %p) ", cp, cp->next); 
     printf("\n");
 
 } /* end print_channel_avail() */
@@ -7171,10 +7167,10 @@ struct monitor *mp;
     printf("Start Channels:\n");
     for (cp = Channels[0]; cp; cp = cp->next) 
     {
-	printf(">%s< %x (nxt %x) ml %x ", 
+	printf(">%s< %p (nxt %p) ml %p ", 
 	    cp->pvname, cp, cp->next, cp->monitor_list);
 	for (mp = cp->monitor_list; mp; mp = mp->right) 
-	    printf("M>(lft %x) %x (rght %x) type %d pval %x active %c cp %x<M ",
+	    printf("M>(lft %p) %p (rght %p) type %d pval %p active %c cp %p<M ",
 		mp->left, mp, mp->right, mp->ezcadatatype, mp->pval, 
 		(mp->active ? 'T' : 'F'), mp->cp);
 	printf("\n");
@@ -7193,9 +7189,9 @@ static void print_discarded_channels()
 
 struct channel *cp;
 
-    printf("Discarded_channels %x : ", Discarded_channels); 
+    printf("Discarded_channels %p : ", Discarded_channels); 
     for (cp = Discarded_channels; cp; cp = cp->next) 
-	printf("%x (nxt %x) ml %x ", cp, cp->next, cp->monitor_list);
+	printf("%p (nxt %p) ml %p ", cp, cp->next, cp->monitor_list);
     printf("\n");
 
 } /* end print_discarded_channels() */
@@ -7210,9 +7206,9 @@ static void print_discarded_monitors()
 
 struct monitor *mp;
 
-    printf("Discarded_monitors %x : ", Discarded_monitors); 
+    printf("Discarded_monitors %p : ", Discarded_monitors); 
     for (mp = Discarded_monitors; mp; mp = mp->left) 
-	printf("%x active %c (lft %x) ", 
+	printf("%p active %c (lft %p) ", 
 	    mp, (mp->active ? 'T' : 'F'), mp->left); 
     printf("\n");
 
@@ -7228,9 +7224,9 @@ static void print_discarded_work()
 
 struct work *wp;
 
-    printf("Discarded_work %x : ", Discarded_work); 
+    printf("Discarded_work %p : ", Discarded_work); 
     for (wp = Discarded_work; wp; wp = wp->next) 
-	printf("%x trashme %c (nxt %x) ", 
+	printf("%p trashme %c (nxt %p) ", 
 	    wp, (wp->trashme ? 'T' : 'F'), wp->next); 
     printf("\n");
 
@@ -7246,9 +7242,9 @@ static void print_monitor_avail()
 
 struct monitor *mp;
 
-    printf("Monitor_avail_hdr %x : ", Monitor_avail_hdr); 
+    printf("Monitor_avail_hdr %p : ", Monitor_avail_hdr); 
     for (mp = Monitor_avail_hdr; mp; mp = mp->left) 
-	printf("%x (lft %x) ", mp, mp->left); 
+	printf("%p (lft %p) ", mp, mp->left); 
     printf("\n");
 
 } /* end print_monitor_avail() */
@@ -7295,9 +7291,9 @@ static void print_work_avail()
 
 struct work *wp;
 
-    printf("Work_avail_hdr %x : ", Work_avail_hdr); 
+    printf("Work_avail_hdr %p : ", Work_avail_hdr); 
     for (wp = Work_avail_hdr; wp; wp = wp->next) 
-	printf("%x (nxt %x) ", wp, wp->next); 
+	printf("%p (nxt %p) ", wp, wp->next); 
     printf("\n");
 
 } /* end print_work_avail() */
@@ -7312,9 +7308,9 @@ static void print_work_list()
 
 struct work *wp;
 
-    printf("Work_list head %x tail %x : ", Work_list.head, Work_list.tail); 
+    printf("Work_list head %p tail %p : ", Work_list.head, Work_list.tail); 
     for (wp = Work_list.head; wp; wp = wp->next) 
-	printf("%x trashme %c (nxt %x)", 
+	printf("%p trashme %c (nxt %p)", 
 	    wp, (wp->trashme ? 'T' : 'F'), wp->next); 
     printf("\n");
 
@@ -7330,7 +7326,7 @@ static void print_workp()
 
     printf("Workp : "); 
     if (Workp)
-	printf("%x trashme %c (nxt %x)\n", 
+	printf("%p trashme %c (nxt %p)\n", 
 	    Workp, (Workp->trashme ? 'T' : 'F'), Workp->next); 
     else
 	printf("0\n");
