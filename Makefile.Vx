@@ -1,0 +1,26 @@
+# Makefile for SDDS Epics
+# $Log$
+# Revision 1.1  2002/03/11 20:02:40  soliday
+# First version.
+#
+#
+#
+
+TOP = ../../..
+include $(TOP)/config/CONFIG_EXTENSIONS
+
+#USR_CFLAGS += -I../include -I../../SDDS/include
+
+SRCS.c = \
+	../ezca.c
+
+LIBOBJS = \
+	ezca.o
+
+LIBNAME = ezca
+
+
+include $(TOP)/config/RULES.Vx
+
+
+
