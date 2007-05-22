@@ -10,20 +10,19 @@
 # $Id$
 #
 TOP = ../..
-#If epics/extensions/configure directory exists, build with it.
-#Otherwise use epics/extensions/config.
-ifeq (0, $(words $(notdir $(wildcard $(TOP)/configure))))
-include $(TOP)/config/CONFIG_EXTENSIONS
-include $(TOP)/config/RULES_ARCHS
-else
 include $(TOP)/configure/CONFIG
 
+ifdef WIN32
 # Use the following line if building ezca to be called from
 # Visual Basic or other languages
 #SHARED_LIBRARIES=YES
 # Use the following line to build EzcaScan and ezcaIDL as
 # standlone DLLs, i.e. without the need for ezca.dll in the path.
 SHARED_LIBRARIES=NO
+else 
+SHARED_LIBRARIES=YES
+endif
+
 INC += ezca.h
 LIBRARY_HOST = ezca
 ezca_SRCS = ezca.c
@@ -31,4 +30,4 @@ ezca_LIBS += ca Com
 ezca_SYS_LIBS_WIN32 = ws2_32 advapi32 user32
 
 include $(TOP)/configure/RULES
-endif
+
