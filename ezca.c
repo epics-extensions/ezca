@@ -6776,7 +6776,7 @@ int i;
 	    malloc((unsigned) (sizeof(struct channel)*NODESPERMAL))) != NULL)
         {
 	    if (Debug)
-		printf("pop_channel() allocated sizeof(struct channel) %d * NODESPERMAL %d bytes = %d bytes %p\n", 
+		printf("pop_channel() allocated sizeof(struct channel) %lu * NODESPERMAL %d bytes = %lu bytes %p\n", 
 		    sizeof(struct channel), NODESPERMAL, 
 			sizeof(struct channel)*NODESPERMAL, Channel_avail_hdr);
 
@@ -6850,7 +6850,7 @@ int i;
 	    malloc((unsigned) (sizeof(struct monitor)*NODESPERMAL))) != NULL)
         {
 	    if (Debug)
-		printf("pop_monitor() allocated sizeof(struct monitor) %d * NODESPERMAL %d bytes = %d bytes %p\n", 
+		printf("pop_monitor() allocated sizeof(struct monitor) %lu * NODESPERMAL %d bytes = %lu bytes %p\n", 
 		    sizeof(struct monitor), NODESPERMAL, 
 		    sizeof(struct monitor)*NODESPERMAL, Monitor_avail_hdr);
 
@@ -6930,7 +6930,7 @@ int i;
         {
 
 	    if (Debug)
-		printf("pop_work() allocated sizeof(struct work) %d * NODESPERMAL %d bytes = %d bytes %p\n", 
+		printf("pop_work() allocated sizeof(struct work) %lu * NODESPERMAL %d bytes = %lu bytes %p\n", 
 		    sizeof(struct work), NODESPERMAL, 
 		    sizeof(struct work)*NODESPERMAL, Work_avail_hdr);
 
