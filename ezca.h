@@ -1,3 +1,5 @@
+#ifndef EZCA_H_INCLUDED
+#define EZCA_H_INCLUDED
 /*************************************************************************\
 * Copyright (c) 2002 The University of Chicago, as Operator of Argonne
 * National Laboratory.
@@ -28,17 +30,37 @@
 #define ezcaPut ezcaPut
 #endif
 
+#include <epicsVersion.h>
+#include <shareLib.h>
+
+#define BASE_IS_MIN_VERSION(a,b,c) \
+	(   EPICS_VERSION > (a)    \
+	|| (EPICS_VERSION==(a) && EPICS_REVISION > (b)) \
+	|| (EPICS_VERSION==(a) && EPICS_REVISION == (b) && EPICS_MODIFICATION >= (c)) \
+	)
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /* Immediate Functions ... do not affect error message */
 
+epicsShareFunc void epicsShareAPI ezcaLock(void);	/* lock library mutex    */
+epicsShareFunc void epicsShareAPI ezcaUnlock(void);	/* release library mutex */
+/* Abort polling by temporarily setting retryCount to 0;
+ * NOTE: this routine does NO memory management and is meant to be
+ *       called from a signal handler (see comments in ezca.c).
+ */
+epicsShareFunc void epicsShareAPI ezcaAbort(void);
+typedef int (*EzcaPollCb)(); 
+epicsShareFunc EzcaPollCb epicsShareAPI ezcaPollCbInstall(EzcaPollCb);
 epicsShareFunc int epicsShareAPI ezcaEndGroup(void);
 epicsShareFunc int epicsShareAPI ezcaEndGroupWithReport(int **rcs, int *nrcs);
 epicsShareFunc int epicsShareAPI ezcaGetErrorString(char *prefix, char **buff);
 epicsShareFunc int epicsShareAPI ezcaNewMonitorValue(char *pvname, 
-	char ezcatype); /* returns TRUE/FALSE */
+	char ezcatype); /* returns TRUE/FALSE or < 0 if no monitor or other error */
+/* Block until monitor happens */
+epicsShareFunc int epicsShareAPI ezcaNewMonitorWait(char *pvname, char ezcatype);
 epicsShareFunc void epicsShareAPI ezcaPerror(char *prefix);
 
 /* Non-Groupable Work Functions */
@@ -53,10 +75,12 @@ epicsShareFunc void epicsShareAPI ezcaFree(void *buff);
 epicsShareFunc int epicsShareAPI ezcaGetRetryCount(void);
 epicsShareFunc float epicsShareAPI ezcaGetTimeout(void);
 epicsShareFunc int epicsShareAPI ezcaPvToChid(char *pvname, chid **cid);
-epicsShareFunc int epicsShareAPI ezcaSetMonitor(char *pvname, char ezcatype);
+epicsShareFunc int epicsShareAPI ezcaSetMonitor(char *pvname, char ezcatype, unsigned long count);
 epicsShareFunc int epicsShareAPI ezcaSetRetryCount(int retry);
 epicsShareFunc int epicsShareAPI ezcaSetTimeout(float sec);
 epicsShareFunc int epicsShareAPI ezcaStartGroup(void);
+epicsShareFunc int epicsShareAPI ezcaClearChannel(char *pvname);
+epicsShareFunc int epicsShareAPI ezcaPurge(int disconnectedOnly);
 epicsShareFunc void epicsShareAPI ezcaTraceOff(void);
 epicsShareFunc void epicsShareAPI ezcaTraceOn(void);
 
@@ -67,6 +91,10 @@ epicsShareFunc int epicsShareAPI ezcaGet(char *pvname, char ezcatype,
 epicsShareFunc int epicsShareAPI ezcaGetControlLimits(char *pvname, 
 	double *low, double *high);
 epicsShareFunc int epicsShareAPI ezcaGetGraphicLimits(char *pvname, 
+	double *low, double *high);
+epicsShareFunc int epicsShareAPI ezcaGetWarnLimits(char *pvname, 
+	double *low, double *high);
+epicsShareFunc int epicsShareAPI ezcaGetAlarmLimits(char *pvname, 
 	double *low, double *high);
 epicsShareFunc int epicsShareAPI ezcaGetNelem(char *pvname, int *nelem);
 epicsShareFunc int epicsShareAPI ezcaGetPrecision(char *pvname, 
@@ -106,7 +134,10 @@ epicsShareFunc int epicsShareAPI ezcaPutOldCa(char *pvname, char ezcatype,
 #define EZCA_NOTIMELYRESPONSE  6
 #define EZCA_INGROUP           7
 #define EZCA_NOTINGROUP        8
+#define EZCA_ABORTED           9
 
 #ifdef __cplusplus
 }
+#endif
+
 #endif
