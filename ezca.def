@@ -33,3 +33,7 @@ ezcaDebugOn
 ezcaDebugOff
 ezcaTraceOn
 ezcaTraceOff
+ezcaAbort
+ezcaPollCbInstall
+ezcaClearChannel
+ezcaPurge
