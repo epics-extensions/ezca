@@ -588,7 +588,7 @@ EzcaPollCb rval;
 int	i;
 
 /* give them the option to call this prior to initializing the library */
-if ( (i=Initialized) )
+if ( (i=(Initialized != 0)) )
 	EZCA_LOCK();
 
 	rval = pollCb;
@@ -5836,14 +5836,19 @@ unsigned rc;
 
 static void EzcaInitializeChannelAccess()
 {
+int rc;
     if (Trace || Debug)
 	printf("ca_task_initialize()\n");
 
 #ifdef EPICS_THREE_FOURTEEN
-    ca_context_create(ca_enable_preemptive_callback);
+    rc = ca_context_create(ca_enable_preemptive_callback);
 #else
-    ca_task_initialize();
+    rc = ca_task_initialize();
 #endif
+
+    if (rc != ECA_NORMAL) {
+	      fprintf(stderr, "EZCA ERROR calling ca_context_create, error=%d\n", rc);
+    }
 
 } /* end initialize_channel_access() */
 
