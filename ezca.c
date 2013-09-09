@@ -556,7 +556,7 @@ void epicsShareAPI ezcaLock()
 
 void epicsShareAPI ezcaUnlock()
 {
-	EZCA_LOCK();
+	EZCA_UNLOCK();
 }
 
 /* this is intended to be called from a signal handler
