@@ -1,3 +1,4 @@
+# Overview
 This directory contains a modified version of the 'ezca' library
 (version 20020802):
 
@@ -117,3 +118,16 @@ very frequent phenomenon, we feel that the suffered
 memory loss is acceptable.
 
 Till Straumann, 2002-2004
+
+# Build 
+This project can be build as follows:
+
+```bash
+cat > configure/RELEASE <<EOF
+EPICS_BASE=/usr/local/epics/base
+EOF
+
+make
+```
+
+(Replace `/usr/local/epics/base` with the location of your epics installation)
