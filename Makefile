@@ -9,7 +9,7 @@
 #
 # $Id$
 #
-TOP = ../..
+TOP = .
 include $(TOP)/configure/CONFIG
 
 ifdef WIN32
