@@ -12,17 +12,6 @@
 TOP = ../..
 include $(TOP)/configure/CONFIG
 
-ifdef WIN32
-# Use the following line if building ezca to be called from
-# Visual Basic or other languages
-#SHARED_LIBRARIES=YES
-# Use the following line to build EzcaScan and ezcaIDL as
-# standlone DLLs, i.e. without the need for ezca.dll in the path.
-SHARED_LIBRARIES=NO
-else 
-SHARED_LIBRARIES=YES
-endif
-
 INC += ezca.h
 LIBRARY_HOST = ezca
 ezca_SRCS = ezca.c
