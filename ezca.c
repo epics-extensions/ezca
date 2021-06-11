@@ -73,17 +73,17 @@ static epicsEventId ezcaDone        = 0;
 #define	EZCA_LOCK() \
 	do { \
 		if (DEBUG_LOCK)								\
-		printf("Thread %s (0x%lx) tries to lock\n",	\
+		printf("Thread %s (0x%p) tries to lock\n",	\
 			epicsThreadGetNameSelf(),				\
-			(unsigned long)epicsThreadGetIdSelf()); \
+			epicsThreadGetIdSelf()); \
 		epicsMutexLock(ezcaMutex);					\
 	} while (0)
 #define	EZCA_UNLOCK()	\
 	do { \
 		if (DEBUG_LOCK) \
-		printf("Thread %s (0x%lx) unlocks\n",		\
+		printf("Thread %s (0x%p) unlocks\n",		\
 			epicsThreadGetNameSelf(),				\
-			(unsigned long)epicsThreadGetIdSelf()); \
+			epicsThreadGetIdSelf()); \
 		epicsMutexUnlock(ezcaMutex); 				\
 	} while (0)
 #define DO_INIT_ONCE() \
@@ -1130,7 +1130,7 @@ int epicsShareAPI ezcaGetErrorString(char *prefix, char **buff)
 struct work *wp;
 char *wtm;
 char *cp;
-unsigned nbytes;
+size_t nbytes;
 int rc;
 
     prologue();
@@ -1277,7 +1277,7 @@ int rc;
 	    if ((*buff = ezcacalloc(nbytes, 1)))
 	    {
 		if (Debug)
-	    printf("ezcaGetErrorString() just allocated %d bytes\n", 
+	    printf("ezcaGetErrorString() just allocated %zu bytes\n", 
 		    nbytes);
 
 		/* filling the buffer */
@@ -2080,7 +2080,7 @@ int epicsShareAPI ezcaDelay(float sec)
 struct work *wp;
 int status;
 int rc;
-int   attempt;
+unsigned int   attempt;
 
     prologue();
 
@@ -2093,7 +2093,7 @@ int   attempt;
 
 	if (sec > 0)
 	{
-		RetryCount = sec/TimeoutSeconds;
+		RetryCount = (unsigned int)(sec/TimeoutSeconds);
 		if ( RetryCount * TimeoutSeconds < sec )
 			RetryCount++;
 		for ( attempt=0, status = ECA_TIMEOUT;
@@ -7726,7 +7726,7 @@ int i;
 	    ezcamalloc((unsigned) (sizeof(struct channel)*NODESPERMAL))) != NULL)
         {
 	    if (Debug)
-		printf("pop_channel() allocated sizeof(struct channel) %d * NODESPERMAL %d bytes = %d bytes %p\n", 
+		printf("pop_channel() allocated sizeof(struct channel) %zu * NODESPERMAL %d bytes = %zu bytes %p\n", 
 		    sizeof(struct channel), NODESPERMAL, 
 			sizeof(struct channel)*NODESPERMAL, Channel_avail_hdr);
 
@@ -7807,7 +7807,7 @@ int i;
 	    ezcamalloc((unsigned) (sizeof(struct monitor)*NODESPERMAL))) != NULL)
         {
 	    if (Debug)
-		printf("pop_monitor() allocated sizeof(struct monitor) %d * NODESPERMAL %d bytes = %d bytes %p\n", 
+		printf("pop_monitor() allocated sizeof(struct monitor) %zu * NODESPERMAL %d bytes = %zu bytes %p\n", 
 		    sizeof(struct monitor), NODESPERMAL, 
 		    sizeof(struct monitor)*NODESPERMAL, Monitor_avail_hdr);
 
@@ -7888,7 +7888,7 @@ int i;
         {
 
 	    if (Debug)
-		printf("pop_work() allocated sizeof(struct work) %d * NODESPERMAL %d bytes = %d bytes %p\n", 
+		printf("pop_work() allocated sizeof(struct work) %zu * NODESPERMAL %d bytes = %zu bytes %p\n", 
 		    sizeof(struct work), NODESPERMAL, 
 		    sizeof(struct work)*NODESPERMAL, Work_avail_hdr);
 
