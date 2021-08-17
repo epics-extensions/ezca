@@ -1,3 +1,4 @@
+# Overview
 This directory contains a modified version of the 'ezca' library
 (version 20020802):
 
@@ -20,6 +21,7 @@ Ezca uses two dyamically managed objects 'struct channel' and
 'struct work'. The former are associated with a CA cid and are
 accessible via a hash table entry.
 
+```
 hash_table
 (PV name)
 __________
@@ -28,6 +30,7 @@ __________------->|struct channel|
 __________        |              |
                   |          CID |---------> CA internal object
                   |--------------|
+```
 
 channel nodes are allocated after successful ca_search_and_connect
 and are released after successful ca_clear_channel(). Only if
@@ -48,6 +51,7 @@ work nodes holds pointers to channel nodes needed by the work
 requests. These references are acquired at entry of
 ezcaEndGroupWithReport and are released prior to exiting that routine.
 
+```
 |---------|
 |work node|
 |---------|           ------------------
@@ -83,6 +87,7 @@ ezcaEndGroupWithReport and are released prior to exiting that routine.
 |---------|
 |next    NULL
 |---------|
+```
 
 The reference count is needed because ezcaEndGroupWithReport
 can discover the need to destroy a channel node. It may only
@@ -117,3 +122,16 @@ very frequent phenomenon, we feel that the suffered
 memory loss is acceptable.
 
 Till Straumann, 2002-2004
+
+# Build 
+This project can be build as follows:
+
+```bash
+cat > configure/RELEASE <<EOF
+EPICS_BASE=/usr/local/epics/base
+EOF
+
+make
+```
+
+(Replace `/usr/local/epics/base` with the location of your epics installation)
