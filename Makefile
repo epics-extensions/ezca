@@ -12,6 +12,8 @@
 TOP = .
 include $(TOP)/configure/CONFIG
 
+DIRS += src
+
 ifdef WIN32
 # Use the following line if building ezca to be called from
 # Visual Basic or other languages
